@@ -181,7 +181,7 @@ JSON
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | positive_term1      | 足し算する単語1 | NULL |
-| negative_term1      | 引き算する単語 | NULL |
+| negative_term      | 引き算する単語 | NULL |
 | positive_term2      | 足し算する単語2 | NULL |
 | offset      | 結果出力のオフセット | 0 | 
 | limit     | 結果出力の上限件数 | 10 |
@@ -245,8 +245,8 @@ word2vec_distanceを使って動的にクエリ展開をします。
 
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
-| limit     | 結果出力の上限件数 | 3 |
-| threshold     | 結果出力の閾値、1以下の小数を指定 | 0.75 |
+| limit     | クエリ展開の上限件数 | 3 |
+| threshold     | クエリ展開用ワードの閾値、1以下の小数を指定 | 0.75 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ | 1 |
 
 * 参考  
