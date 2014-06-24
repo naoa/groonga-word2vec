@@ -290,7 +290,7 @@ The original word2vec is provided by 2013 Google Inc.
 
 LGPL 2.1. See COPYING-LGPL-2.1 for details.
 
-The original word2vec code is Apache License 2.0. See COPYING-Apache-Licece-2.0.  
+The original word2vec code is Apache License 2.0. See COPYING-Apache-License-2.0.  
 
 https://code.google.com/p/word2vec/
 
