@@ -1,0 +1,5 @@
+register word2vec/word2vec
+[[0,0.0,0.0],true]
+word2vec_distance
+[[0,0.0,0.0],false]
+#|w| [plugin][word2vec][load] Input file not found : db/db_w2v.bin
