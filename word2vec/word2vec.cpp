@@ -217,9 +217,10 @@ sparse(grn_ctx *ctx, const char *string, char *mecab_option)
 }
 
 static const char *
-normalize(grn_ctx *ctx, grn_obj *string, char* normalizer_name, int normalizer_len)
+normalize(grn_ctx *ctx, grn_obj *buf, char* normalizer_name, int normalizer_len, grn_obj *outbuf)
 {
   grn_obj *normalizer;
+  const char *normalized;
   grn_obj *grn_string;
 
   unsigned int normalized_length_in_bytes;
@@ -230,16 +231,22 @@ normalize(grn_ctx *ctx, grn_obj *string, char* normalizer_name, int normalizer_l
                            normalizer_len);
 
   grn_string = grn_string_open(ctx,
-                               GRN_TEXT_VALUE(string), GRN_TEXT_LEN(string),
+                               GRN_TEXT_VALUE(buf), GRN_TEXT_LEN(buf),
                                normalizer, 0);
   grn_obj_unlink(ctx, normalizer);
 
-  const char *normalized;
   grn_string_get_normalized(ctx, grn_string,
                             &normalized,
                             &normalized_length_in_bytes,
                             &normalized_n_characters);
-  return normalized;
+
+  GRN_TEXT_PUTS(ctx, outbuf, normalized);
+  const char *ret_normalized;
+  ret_normalized = GRN_TEXT_VALUE(outbuf);
+
+  grn_obj_unlink(ctx, grn_string);
+
+  return ret_normalized;
 }
 
 static void
@@ -431,9 +438,12 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     return NULL;
   } else {
     const char *term;
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    GRN_BULK_REWIND(&buf);
 
     if(normalizer_name != ""){
-      term = normalize(ctx, var, normalizer_name, normalizer_len);
+      term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
     }
@@ -447,6 +457,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
     strcpy(st1, term);
     st1[strlen(st1) + 1] = 0;
+    grn_obj_unlink(ctx, &buf);
   }
 
   GRN_PLUGIN_LOG(ctx, GRN_LOG_DEBUG,
@@ -712,11 +723,16 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   } else {
     const char *term;
 
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    GRN_BULK_REWIND(&buf);
+
     if(normalizer_name != ""){
-      term = normalize(ctx, var, normalizer_name, normalizer_len);
+      term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
     }
+
     right_trim((char *)term, '\n');
     right_trim((char *)term, ' ');
     if(mecab_option != NULL && strlen(term) > 0){
@@ -727,6 +743,9 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
 
     strcpy(st1, term);
     strcat(st1, " ");
+
+    grn_obj_unlink(ctx, &buf);
+
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "negative_term", -1);
@@ -740,11 +759,16 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   } else {
     const char *term;
 
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    GRN_BULK_REWIND(&buf);
+
     if(normalizer_name != ""){
-      term = normalize(ctx, var, normalizer_name, normalizer_len);
+      term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
     }
+
     right_trim((char *)term, '\n');
     right_trim((char *)term, ' ');
     if(mecab_option != NULL && strlen(term) > 0){
@@ -755,6 +779,8 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
 
     strcat(st1, term);
     strcat(st1, " ");
+
+    grn_obj_unlink(ctx, &buf);
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "positive_term2", -1);
@@ -768,11 +794,16 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   } else {
     const char *term;
 
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    GRN_BULK_REWIND(&buf);
+
     if(normalizer_name != ""){
-      term = normalize(ctx, var, normalizer_name, normalizer_len);
+      term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
     }
+
     right_trim((char *)term, '\n');
     right_trim((char *)term, ' ');
     if(mecab_option != NULL && strlen(term) > 0){
@@ -782,6 +813,8 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     right_trim((char *)term, ' ');
 
     strcat(st1, term);
+
+    grn_obj_unlink(ctx, &buf);
   }
   st1[strlen(st1) + 1] = 0;
 
@@ -1651,12 +1684,34 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         grn_obj_get_value(ctx, column, id, &buf);
 
         const char *column_value = NULL;
+        grn_obj *grn_string;
 
         if (normalizer_name != ""){
-          column_value = normalize(ctx, &buf, normalizer_name, normalizer_len);
+          /* Don't use normalize function because its need buffer copy. */
+
+          grn_obj *normalizer;
+          const char *normalized;
+          unsigned int normalized_length_in_bytes;
+          unsigned int normalized_n_characters;
+
+          normalizer = grn_ctx_get(ctx,
+                                   normalizer_name,
+                                   normalizer_len);
+
+          grn_string = grn_string_open(ctx,
+                                       GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf),
+                                       normalizer, 0);
+          grn_obj_unlink(ctx, normalizer);
+
+          grn_string_get_normalized(ctx, grn_string,
+                                    &normalized,
+                                    &normalized_length_in_bytes,
+                                    &normalized_n_characters);
+          column_value = normalized;
         } else {
           column_value = GRN_TEXT_VALUE(&buf);
         }
+
 
         if (input_filter != NULL) {
           string s = column_value;
@@ -1664,6 +1719,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           re2::RE2::GlobalReplace(&s, "[ ]+", " ");
           column_value = s.c_str();
         }
+
         GRN_TEXT_INIT(&buf, 0);
         GRN_BULK_REWIND(&buf);
         GRN_TEXT_PUTS(ctx, &buf, column_value);
@@ -1683,6 +1739,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         }
 
         grn_obj_unlink(ctx, &buf);
+        grn_obj_unlink(ctx, grn_string);
       }
       grn_table_cursor_close(ctx, cur);
     }
