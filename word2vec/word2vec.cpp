@@ -437,7 +437,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     } else {
       term = GRN_TEXT_VALUE(var);
     }
-    if(mecab_option != NULL){
+    right_trim((char *)term, '\n');
+    right_trim((char *)term, ' ');
+    if(mecab_option != NULL && strlen(term) > 0){
       term = sparse(ctx, term, mecab_option);
     }
     right_trim((char *)term, '\n');
@@ -715,7 +717,9 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     } else {
       term = GRN_TEXT_VALUE(var);
     }
-    if(mecab_option != NULL){
+    right_trim((char *)term, '\n');
+    right_trim((char *)term, ' ');
+    if(mecab_option != NULL && strlen(term) > 0){
       term = sparse(ctx, term, mecab_option);
     }
     right_trim((char *)term, '\n');
@@ -741,7 +745,9 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     } else {
       term = GRN_TEXT_VALUE(var);
     }
-    if(mecab_option != NULL){
+    right_trim((char *)term, '\n');
+    right_trim((char *)term, ' ');
+    if(mecab_option != NULL && strlen(term) > 0){
       term = sparse(ctx, term, mecab_option);
     }
     right_trim((char *)term, '\n');
@@ -767,7 +773,9 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     } else {
       term = GRN_TEXT_VALUE(var);
     }
-    if(mecab_option != NULL){
+    right_trim((char *)term, '\n');
+    right_trim((char *)term, ' ');
+    if(mecab_option != NULL && strlen(term) > 0){
       term = sparse(ctx, term, mecab_option);
     }
     right_trim((char *)term, '\n');
@@ -1650,16 +1658,20 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           column_value = GRN_TEXT_VALUE(&buf);
         }
 
+        right_trim((char *)column_value, '\n');
+        right_trim((char *)column_value, ' ');
+        if(mecab_option != NULL && strlen(column_value) > 0){
+          column_value = sparse(ctx, column_value, mecab_option);
+        }
+        right_trim((char *)column_value, '\n');
+        right_trim((char *)column_value, ' ');
+
         if (input_filter != NULL) {
           string s = column_value;
           re2::RE2::GlobalReplace(&s, input_filter, "");
           column_value = s.c_str();
         }
-        if(mecab_option != NULL){
-          column_value = sparse(ctx, column_value, mecab_option);
-        }
-        right_trim((char *)column_value, '\n');
-        right_trim((char *)column_value, ' ');
+
         if(strlen(column_value) > 0){
           fprintf(fo, "%s\n", column_value);
         }
