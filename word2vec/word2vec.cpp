@@ -1658,6 +1658,17 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           column_value = GRN_TEXT_VALUE(&buf);
         }
 
+        if (input_filter != NULL) {
+          string s = column_value;
+          re2::RE2::GlobalReplace(&s, input_filter, " ");
+          re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+          column_value = s.c_str();
+        }
+        GRN_TEXT_INIT(&buf, 0);
+        GRN_BULK_REWIND(&buf);
+        GRN_TEXT_PUTS(ctx, &buf, column_value);
+        column_value = GRN_TEXT_VALUE(&buf);
+        
         right_trim((char *)column_value, '\n');
         right_trim((char *)column_value, ' ');
         if(mecab_option != NULL && strlen(column_value) > 0){
@@ -1666,11 +1677,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         right_trim((char *)column_value, '\n');
         right_trim((char *)column_value, ' ');
 
-        if (input_filter != NULL) {
-          string s = column_value;
-          re2::RE2::GlobalReplace(&s, input_filter, "");
-          column_value = s.c_str();
-        }
 
         if(strlen(column_value) > 0){
           fprintf(fo, "%s\n", column_value);
