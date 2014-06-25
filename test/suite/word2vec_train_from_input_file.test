@@ -1,0 +1,5 @@
+register word2vec/word2vec
+
+word2vec_train --input_filter "a" --mecab_option "-F%m:%f[0]\\s -E\\0" --input_file 
+
+

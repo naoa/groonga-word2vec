@@ -1658,6 +1658,87 @@ static GNUC_UNUSED int ArgPos(char *str, int argc, char **argv) {
   return -1;
 }
 
+#define MAX_LINE_LENGTH 65535
+
+static grn_bool
+file_to_train_file(grn_ctx *ctx, char *train_file,
+                   char *input_file,
+                   char *normalizer_name, int normalizer_len,
+                   char *input_filter, char *mecab_option)
+{
+  FILE *fp;
+  if ((fp = fopen(input_file, "r")) == NULL) {
+    printf("file open error\n");
+    return GRN_FALSE;
+  }
+  char data[MAX_LINE_LENGTH];
+  FILE *fo = fopen(train_file, "wb");
+
+  while ( fgets(data, MAX_LINE_LENGTH, fp) != NULL ) {
+
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    GRN_BULK_REWIND(&buf);
+    GRN_TEXT_PUTS(ctx, &buf, data);
+
+    const char *column_value = NULL;
+    grn_obj *grn_string;
+
+    if (normalizer_name != ""){
+
+      grn_obj *normalizer;
+      const char *normalized;
+      unsigned int normalized_length_in_bytes;
+      unsigned int normalized_n_characters;
+
+      normalizer = grn_ctx_get(ctx,
+                       normalizer_name,
+                       normalizer_len);
+
+      grn_string = grn_string_open(ctx,
+                           GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf),
+                           normalizer, 0);
+      grn_obj_unlink(ctx, normalizer);
+
+      grn_string_get_normalized(ctx, grn_string,
+                        &normalized,
+                        &normalized_length_in_bytes,
+                        &normalized_n_characters);
+      column_value = normalized;
+    } else {
+      column_value = GRN_TEXT_VALUE(&buf);
+    }
+    grn_obj buf2;
+
+    GRN_TEXT_INIT(&buf2, 0);
+    GRN_BULK_REWIND(&buf2);
+    GRN_TEXT_PUTS(ctx, &buf2, column_value);
+    column_value = GRN_TEXT_VALUE(&buf2);
+
+    right_trim((char *)column_value, '\n');
+    right_trim((char *)column_value, ' ');
+    if(mecab_option != NULL && strlen(column_value) > 0){
+      column_value = sparse(ctx, column_value, mecab_option);
+    }
+    right_trim((char *)column_value, '\n');
+    right_trim((char *)column_value, ' ');
+
+
+    if(strlen(column_value) > 0){
+      fprintf(fo, "%s\n", column_value);
+    }
+
+    grn_obj_unlink(ctx, &buf);
+    grn_obj_unlink(ctx, &buf2);
+    grn_obj_unlink(ctx, grn_string);
+
+  }
+
+  fclose(fo);
+  fclose(fp);
+  return GRN_TRUE;
+
+}
 
 static grn_bool
 column_to_train_file(grn_ctx *ctx, char *train_file,
@@ -1720,10 +1801,12 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           column_value = s.c_str();
         }
 
-        GRN_TEXT_INIT(&buf, 0);
-        GRN_BULK_REWIND(&buf);
-        GRN_TEXT_PUTS(ctx, &buf, column_value);
-        column_value = GRN_TEXT_VALUE(&buf);
+        grn_obj buf2;
+
+        GRN_TEXT_INIT(&buf2, 0);
+        GRN_BULK_REWIND(&buf2);
+        GRN_TEXT_PUTS(ctx, &buf2, column_value);
+        column_value = GRN_TEXT_VALUE(&buf2);
         
         right_trim((char *)column_value, '\n');
         right_trim((char *)column_value, ' ');
@@ -1739,6 +1822,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         }
 
         grn_obj_unlink(ctx, &buf);
+        grn_obj_unlink(ctx, &buf2);
         grn_obj_unlink(ctx, grn_string);
       }
       grn_table_cursor_close(ctx, cur);
@@ -1767,6 +1851,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   unsigned int normalizer_len = 14;
   char *input_filter = NULL;
   char *mecab_option = (char *)"-Owakati";
+  char *input_file = NULL;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "table", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -1793,6 +1878,11 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     mecab_option = GRN_TEXT_VALUE(var);
+  }
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
+  if(GRN_TEXT_LEN(var) != 0) {
+    input_file = GRN_TEXT_VALUE(var);
   }
 
   train_file[0] = 0;
@@ -1867,10 +1957,6 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     classes = atoi(GRN_TEXT_VALUE(var));
   }
 
-  if (train_file[0] == 0 && (table_name == NULL || column_name == NULL)){
-    printf("Need table_name + column_name [+ to train_file] OR only train_file.\n");
-    return NULL;
-  }
   if (train_file[0] == 0) {
     get_train_file_path(ctx, train_file);
   }
@@ -1888,6 +1974,19 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
         return NULL;
      }
   }
+  else if(input_file != NULL) {
+    if(file_to_train_file(ctx, train_file,
+                          input_file,
+                          normalizer_name, normalizer_len,
+                          input_filter, mecab_option) == GRN_TRUE)
+     {
+        printf("input file %s to train file %s\n", input_file, train_file);
+     } else {
+        printf("input file %s to train file %s failed.\n", input_file, train_file);
+        return NULL;
+     }
+  }
+
   vocab = (struct vocab_word *)calloc(vocab_max_size, sizeof(struct vocab_word));
   vocab_hash = (int *)calloc(vocab_hash_size, sizeof(int));
 
@@ -1972,7 +2071,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[21];
+  grn_expr_var vars[22];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
@@ -2011,21 +2110,22 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "input_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[6], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "save_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "read_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "debug", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "cbow", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "window", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "sample", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "hs", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "negative", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "min-count", -1);
-  grn_plugin_expr_var_init(ctx, &vars[20], "classes", -1);
-  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 21, vars);
+  grn_plugin_expr_var_init(ctx, &vars[7], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "save_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "read_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "debug", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "cbow", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "window", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "sample", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "hs", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "negative", -1);
+  grn_plugin_expr_var_init(ctx, &vars[20], "min-count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[21], "classes", -1);
+  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 22, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,
