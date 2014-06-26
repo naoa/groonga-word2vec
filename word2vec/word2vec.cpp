@@ -1708,6 +1708,14 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
     } else {
       column_value = GRN_TEXT_VALUE(&buf);
     }
+
+    if (input_filter != NULL) {
+      string s = column_value;
+      re2::RE2::GlobalReplace(&s, input_filter, " ");
+      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+      column_value = s.c_str();
+    }
+
     grn_obj buf2;
 
     GRN_TEXT_INIT(&buf2, 0);
