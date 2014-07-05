@@ -1673,11 +1673,12 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
   }
   char data[MAX_LINE_LENGTH];
   FILE *fo = fopen(train_file, "wb");
+  grn_obj buf, buf2;
+  GRN_TEXT_INIT(&buf, 0);
+  GRN_TEXT_INIT(&buf2, 0);
 
   while ( fgets(data, MAX_LINE_LENGTH, fp) != NULL ) {
 
-    grn_obj buf;
-    GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
     GRN_TEXT_PUTS(ctx, &buf, data);
 
@@ -1716,9 +1717,6 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
       column_value = s.c_str();
     }
 
-    grn_obj buf2;
-
-    GRN_TEXT_INIT(&buf2, 0);
     GRN_BULK_REWIND(&buf2);
     GRN_TEXT_PUTS(ctx, &buf2, column_value);
     column_value = GRN_TEXT_VALUE(&buf2);
@@ -1735,12 +1733,11 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
     if(strlen(column_value) > 0){
       fprintf(fo, "%s\n", column_value);
     }
-
-    grn_obj_unlink(ctx, &buf);
-    grn_obj_unlink(ctx, &buf2);
     grn_obj_unlink(ctx, grn_string);
 
   }
+  grn_obj_unlink(ctx, &buf);
+  grn_obj_unlink(ctx, &buf2);
 
   fclose(fo);
   fclose(fp);
@@ -1766,9 +1763,11 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
                                      GRN_CURSOR_BY_ID))) {
       grn_id id;
+      grn_obj buf, buf2;
+      GRN_TEXT_INIT(&buf, 0);
+      GRN_TEXT_INIT(&buf2, 0);
+
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
-        grn_obj buf;
-        GRN_TEXT_INIT(&buf, 0);
         GRN_BULK_REWIND(&buf);
         grn_obj_get_value(ctx, column, id, &buf);
 
@@ -1809,9 +1808,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           column_value = s.c_str();
         }
 
-        grn_obj buf2;
-
-        GRN_TEXT_INIT(&buf2, 0);
         GRN_BULK_REWIND(&buf2);
         GRN_TEXT_PUTS(ctx, &buf2, column_value);
         column_value = GRN_TEXT_VALUE(&buf2);
@@ -1829,10 +1825,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           fprintf(fo, "%s\n", column_value);
         }
 
-        grn_obj_unlink(ctx, &buf);
-        grn_obj_unlink(ctx, &buf2);
         grn_obj_unlink(ctx, grn_string);
       }
+      grn_obj_unlink(ctx, &buf);
+      grn_obj_unlink(ctx, &buf2);
       grn_table_cursor_close(ctx, cur);
     }
     grn_obj_unlink(ctx, table);
