@@ -1,0 +1,30 @@
+register word2vec/word2vec
+
+table_create Entries TABLE_NO_KEY
+column_create Entries title COLUMN_SCALAR ShortText
+column_create Entries content COLUMN_SCALAR ShortText
+
+table_create Tokens TABLE_PAT_KEY ShortText --default_tokenizer TokenBigram
+column_create Tokens entries_title COLUMN_INDEX|WITH_POSITION Entries title
+column_create Tokens entries_content COLUMN_INDEX|WITH_POSITION Entries content
+
+column_create Entries tags COLUMN_VECTOR Tokens
+column_create Entries tags2 COLUMN_VECTOR Tokens
+
+load --table Entries
+[
+{"title": "hoge", "content": "groonga + MySQL = mroonga.", "tags": ["Groonga", "Mroonga"], "tags2": ["hoge", "groonga"]},
+{"title": "huge", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ato", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ago", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ago", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "hugo", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ago", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ago", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "ago", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]},
+{"title": "age", "content": "rroonga", "tags": ["Groonga Database", "Rroonga"]}
+]
+
+word2vec_train Entries tags_,title,content,tags2_ --input_add_prefix "tag:" --no_mecab true
+
+word2vec_distance "tag:Groonga_Database"

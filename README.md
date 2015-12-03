@@ -20,12 +20,14 @@ Groongaのカラムからではないテキストファイルからの学習に�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column      | Groongaのカラム | NULL | 
+| column_names      | Groongaのカラム名 ,区切りで複数指定可。末尾が_の場合、スペースを_に置換してフレーズ化する | NULL | 
 | train_file     | 学習用テキストファイル |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
-| normalizer      | Groongaのノーマライザ― | NormalizerAuto |
+| normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
+| input_add_prefix   | 入力テキストの先頭に追加したい文字列(１カラム目のみ) | NULL |
 | mecab_option   | MeCabのオプション | -Owakati |
+| no_mecab   | MeCabを使わない場合true | false |
 | input_file      | 分かち書きされていないテキストファイル(1行最大65535バイト) | NULL |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
@@ -124,6 +126,7 @@ JSON (true)
 | threshold     | 結果出力の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
+| white_term_filter   | 出力をさせる単語にマッチする正規表現(完全一致) | NULL |
 | output_filter   | 出力結果から除去したい文字列の正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |

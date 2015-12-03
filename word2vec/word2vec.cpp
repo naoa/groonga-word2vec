@@ -1,4 +1,4 @@
-/* 
+/*
   Copyright(C) 2014 Naoya Murakami <naoya@createfield.com>
 
   This library is free software; you can redistribute it and/or
@@ -306,7 +306,7 @@ word2vec_load(grn_ctx *ctx, grn_user_data *user_data)
   if (f == NULL) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
                    "[plugin][word2vec][load] "
-                   "Input file not found : %s", 
+                   "Input file not found : %s",
                    file_name);
     return GRN_FALSE;
   }
@@ -320,7 +320,7 @@ word2vec_load(grn_ctx *ctx, grn_user_data *user_data)
   if (M == NULL) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
                    "[plugin][word2vec][load] "
-                   "Cannot allocate memory: %lld MB %lld %lld", 
+                   "Cannot allocate memory: %lld MB %lld %lld",
                    (long long)words * size * sizeof(float) / 1048576, words, size);
     return GRN_FALSE;
   }
@@ -385,6 +385,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char *normalizer_name = (char *)"NormalizerAuto";
   int normalizer_len = 14;
   char *term_filter = NULL;
+  char *white_term_filter = NULL;
   char *output_filter = NULL;
   char *mecab_option = NULL;
   int expander_mode = 0;
@@ -407,13 +408,21 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     threshold = atof(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
-    normalizer_name = GRN_TEXT_VALUE(var);
-    normalizer_len = GRN_TEXT_LEN(var);
+  if (GRN_TEXT_LEN(var) != 0) {
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      normalizer_len = 0;
+    } else {
+      normalizer_name = GRN_TEXT_VALUE(var);
+      normalizer_len = GRN_TEXT_LEN(var);
+    }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "term_filter", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     term_filter = GRN_TEXT_VALUE(var);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "white_term_filter", -1);
+  if(GRN_TEXT_LEN(var) != 0) {
+    white_term_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -442,7 +451,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
-    if(normalizer_name != ""){
+    if(normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
@@ -533,10 +542,17 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
-  if (threshold > 0 || term_filter != NULL) {
+  if (threshold > 0 || term_filter != NULL || white_term_filter != NULL) {
     for (a = 0; a < N; a++) {
       if (threshold > 0 && bestd[a] < threshold) {
         bestd[a] = 0;
+      }
+      if (white_term_filter != NULL) {
+        string s = bestw[a];
+        string t = white_term_filter;
+        if ( !RE2::FullMatch(s, t) ) {
+          bestd[a] = 0;
+        }
       }
       if (term_filter != NULL) {
         string s = bestw[a];
@@ -550,7 +566,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
   unsigned int max;
   if (offset + limit > N) {
-    max = N; 
+    max = N;
   } else {
     max = offset + limit;
   }
@@ -690,10 +706,13 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   if(GRN_TEXT_LEN(var) != 0) {
     threshold = atof(GRN_TEXT_VALUE(var));
   }
-  var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
-    normalizer_name = GRN_TEXT_VALUE(var);
-    normalizer_len = GRN_TEXT_LEN(var);
+  if (GRN_TEXT_LEN(var) != 0) {
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      normalizer_len = 0;
+    } else {
+      normalizer_name = GRN_TEXT_VALUE(var);
+      normalizer_len = GRN_TEXT_LEN(var);
+    }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "term_filter", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -727,7 +746,7 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
-    if(normalizer_name != ""){
+    if(normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
@@ -763,7 +782,7 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
-    if(normalizer_name != ""){
+    if(normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
@@ -798,7 +817,7 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
-    if(normalizer_name != ""){
+    if(normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
@@ -1685,7 +1704,7 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
     const char *column_value = NULL;
     grn_obj *grn_string;
 
-    if (normalizer_name != ""){
+    if (normalizer_len){
 
       grn_obj *normalizer;
       const char *normalized;
@@ -1745,91 +1764,245 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
 
 }
 
+#define SPLIT_BUF_SIZE 20
+#define NELEMS(a) (sizeof(a) / sizeof(a[0]))
+
+static int in(const char *s, const char c)
+{
+  int i;
+  for (i = 0; s[i] != '\0'; i++)
+    if (s[i] == c) return 1;
+  return 0;
+}
+
+int split(char *ary[], int len, const char *s, const char *delimiter)
+{
+  char buf[SPLIT_BUF_SIZE];
+  int i, j;
+  for (i = 0; i < len && *s != '\0'; i++) {
+    while (in(delimiter, *s))
+      s++;
+    for (j = 0; j < SPLIT_BUF_SIZE && *s != '\0' && !in(delimiter, *s); j++, s++)
+      buf[j] = *s;
+    buf[j] = '\0';
+    if (j == 0) break;
+    ary[i] = strdup(buf);
+  }
+  return i;
+}
+
 static grn_bool
 column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *table_name, int table_len,
-                     char *column_name, int column_len,
+                     const char *column_names,
                      char *normalizer_name, int normalizer_len,
-                     char *input_filter, char *mecab_option)
+                     char *input_filter, char *input_add_prefix,
+                     char *mecab_option)
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
+  grn_obj *normalizer;
+  if (normalizer_len) {
+    normalizer = grn_ctx_get(ctx,
+                             normalizer_name,
+                             normalizer_len);
+  }
   if (table) {
     FILE *fo = fopen(train_file, "wb");
-
-    grn_obj *column;
-    column = grn_obj_column(ctx, table, column_name, column_len);
-
+    char *column_name_array[20];
+    grn_bool is_phrase[20];
+    int i, t, array_len, n_first_vec = 0;
+    grn_obj *columns[20];
     grn_table_cursor *cur;
+    array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
+    for (i = 0; i < array_len; i++) {
+      if (column_name_array[i][strlen(column_name_array[i]) - 1] == '_') {
+        is_phrase[i] = GRN_TRUE;
+      } else {
+        is_phrase[i] = GRN_FALSE;
+      }
+      right_trim(column_name_array[i], '_');
+      columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
+    }
     if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
                                      GRN_CURSOR_BY_ID))) {
       grn_id id;
-      grn_obj buf, buf2;
+      grn_obj buf, buf2, buf3;
+      grn_obj vbuf;
       GRN_TEXT_INIT(&buf, 0);
       GRN_TEXT_INIT(&buf2, 0);
+      GRN_TEXT_INIT(&buf3, 0);
+      GRN_TEXT_INIT(&vbuf, GRN_OBJ_VECTOR);
 
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
-        GRN_BULK_REWIND(&buf);
-        grn_obj_get_value(ctx, column, id, &buf);
+        GRN_BULK_REWIND(&vbuf);
+        for (i = 0; i < array_len; i++) {
+          const char *column_value = NULL;
+          GRN_BULK_REWIND(&buf);
+          grn_obj_get_value(ctx, columns[i], id, &buf);
 
-        const char *column_value = NULL;
-        grn_obj *grn_string;
+          if ((&(buf))->header.type == GRN_UVECTOR) {
+            grn_obj value;
+            grn_obj record;
+            int n, s;
+            GRN_UINT32_INIT(&value, 0);
+            GRN_RECORD_INIT(&record, 0, ((&buf))->header.domain);
+            GRN_BULK_REWIND(&buf2);
+            n = grn_vector_size(ctx, &buf);
+            if (i == 0) {
+              n_first_vec = n;
+            }
+            for (s = 0; s < n; s++) {
+              grn_id tid;
+              tid = grn_uvector_get_element(ctx, &buf, s, NULL);
+              GRN_RECORD_SET(ctx, &record, tid);
+              {
+                grn_obj *temp_table;
+                grn_id temp_id;
+                grn_obj temp_key;
+                char key_name[GRN_TABLE_MAX_KEY_SIZE];
+                int key_len;
+                temp_table = grn_ctx_at(ctx, (&record)->header.domain);
+                temp_id = GRN_RECORD_VALUE(&record);
+                GRN_OBJ_INIT(&temp_key, GRN_BULK, 0, temp_table->header.domain);
+                key_len = grn_table_get_key(ctx, temp_table, temp_id, key_name, GRN_TABLE_MAX_KEY_SIZE);
+                GRN_BULK_REWIND(&buf2);
+                GRN_TEXT_SET(ctx, &buf2, key_name, key_len);
+                GRN_TEXT_PUTC(ctx, &buf2, '\0');
+                column_value = GRN_TEXT_VALUE(&buf2);
 
-        if (normalizer_name != ""){
-          /* Don't use normalize function because its need buffer copy. */
+                if (normalizer_len) {
+                  grn_obj *grn_string;
+                  const char *normalized;
+                  unsigned int normalized_length_in_bytes;
+                  unsigned int normalized_n_characters;
+                  grn_string = grn_string_open(ctx,
+                                               GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2),
+                                               normalizer, 0);
+                  grn_string_get_normalized(ctx, grn_string,
+                                            &normalized,
+                                            &normalized_length_in_bytes,
+                                            &normalized_n_characters);
+                  GRN_BULK_REWIND(&buf3);
+                  if (normalized_length_in_bytes > 0) {
+                    GRN_TEXT_SET(ctx, &buf3, normalized, normalized_length_in_bytes);
+                  }
+                  GRN_TEXT_PUTC(ctx, &buf3, '\0');
+                  column_value = GRN_TEXT_VALUE(&buf3);
+                  grn_obj_unlink(ctx, grn_string);
+                } else {
+                  GRN_BULK_REWIND(&buf3);
+                  GRN_TEXT_PUTS(ctx, &buf3, GRN_TEXT_VALUE(&buf2));
+                  GRN_TEXT_PUTC(ctx, &buf3, '\0');
+                  column_value = GRN_TEXT_VALUE(&buf3);
+                }
 
-          grn_obj *normalizer;
-          const char *normalized;
-          unsigned int normalized_length_in_bytes;
-          unsigned int normalized_n_characters;
+                if (input_filter != NULL || is_phrase[i]) {
+                  string s = column_value;
+                  if (input_filter != NULL) {
+                    re2::RE2::GlobalReplace(&s, input_filter, " ");
+                    re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+                  }
+                  if (is_phrase[i]) {
+                    re2::RE2::GlobalReplace(&s, " ", "_");
+                  }
+                  column_value = s.c_str();
+                }
 
-          normalizer = grn_ctx_get(ctx,
-                                   normalizer_name,
-                                   normalizer_len);
+                if (strlen(column_value) > 0){
+                  GRN_BULK_REWIND(&buf2);
+                  GRN_TEXT_PUTS(ctx, &buf2, column_value);
+                  grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+                }
 
-          grn_string = grn_string_open(ctx,
-                                       GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf),
-                                       normalizer, 0);
-          grn_obj_unlink(ctx, normalizer);
+                grn_obj_unlink(ctx, temp_table);
+                GRN_OBJ_FIN(ctx, &temp_key);
+              }
+            }
+            grn_obj_unlink(ctx, &value);
+            GRN_OBJ_FIN(ctx, &record);
+          } else {
+            if (normalizer_len) {
+              grn_obj *grn_string;
+              const char *normalized;
+              unsigned int normalized_length_in_bytes;
+              unsigned int normalized_n_characters;
+              grn_string = grn_string_open(ctx,
+                                           GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf),
+                                           normalizer, 0);
+              grn_string_get_normalized(ctx, grn_string,
+                                        &normalized,
+                                        &normalized_length_in_bytes,
+                                        &normalized_n_characters);
+              GRN_BULK_REWIND(&buf2);
+              if (normalized_length_in_bytes > 0) {
+                GRN_TEXT_SET(ctx, &buf2, normalized, normalized_length_in_bytes);
+              }
+              GRN_TEXT_PUTC(ctx, &buf2, '\0');
+              column_value = GRN_TEXT_VALUE(&buf2);
+              grn_obj_unlink(ctx, grn_string);
+            } else {
+              GRN_BULK_REWIND(&buf2);
+              GRN_TEXT_PUTS(ctx, &buf2, GRN_TEXT_VALUE(&buf));
+              GRN_TEXT_PUTC(ctx, &buf2, '\0');
+              column_value = GRN_TEXT_VALUE(&buf2);
+            }
 
-          grn_string_get_normalized(ctx, grn_string,
-                                    &normalized,
-                                    &normalized_length_in_bytes,
-                                    &normalized_n_characters);
-          column_value = normalized;
-        } else {
-          column_value = GRN_TEXT_VALUE(&buf);
+            if (input_filter != NULL || is_phrase[i]) {
+              string s = column_value;
+              if (input_filter != NULL) {
+                re2::RE2::GlobalReplace(&s, input_filter, " ");
+                re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+              }
+              if (is_phrase[i]) {
+                re2::RE2::GlobalReplace(&s, " ", "_");
+              }
+              column_value = s.c_str();
+            }
+            right_trim((char *)column_value, '\n');
+            right_trim((char *)column_value, ' ');
+
+            if(mecab_option != NULL && strlen(column_value) > 0){
+              GRN_BULK_REWIND(&buf2);
+              GRN_TEXT_PUTS(ctx, &buf2, column_value);
+              column_value = GRN_TEXT_VALUE(&buf2);
+              column_value = sparse(ctx, column_value, mecab_option);
+              right_trim((char *)column_value, '\n');
+              right_trim((char *)column_value, ' ');
+            }
+            if (strlen(column_value) > 0){
+              GRN_BULK_REWIND(&buf2);
+              GRN_TEXT_PUTS(ctx, &buf2, column_value);
+              grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+            }
+          }
         }
-
-
-        if (input_filter != NULL) {
-          string s = column_value;
-          re2::RE2::GlobalReplace(&s, input_filter, " ");
-          re2::RE2::GlobalReplace(&s, "[ ]+", " ");
-          column_value = s.c_str();
+        for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
+          const char *value;
+          unsigned int length;
+          length = grn_vector_get_element(ctx, &vbuf, t, &value, NULL,  NULL);
+          if (t > 0) {
+            fprintf(fo, " ");
+          }
+          if (((n_first_vec == 0 && t == 0) || (n_first_vec > 0 && t < n_first_vec)) && input_add_prefix) {
+            fprintf(fo, "%s", input_add_prefix);
+          }
+          fprintf(fo, "%.*s", length, value);
         }
-
-        GRN_BULK_REWIND(&buf2);
-        GRN_TEXT_PUTS(ctx, &buf2, column_value);
-        column_value = GRN_TEXT_VALUE(&buf2);
-        
-        right_trim((char *)column_value, '\n');
-        right_trim((char *)column_value, ' ');
-        if(mecab_option != NULL && strlen(column_value) > 0){
-          column_value = sparse(ctx, column_value, mecab_option);
+        fprintf(fo, "\n");
+      }
+      for (i = 0; i < array_len; i++) {
+        if (columns[i]) {
+          grn_obj_unlink(ctx, columns[i]);
         }
-        right_trim((char *)column_value, '\n');
-        right_trim((char *)column_value, ' ');
-
-
-        if(strlen(column_value) > 0){
-          fprintf(fo, "%s\n", column_value);
-        }
-
-        grn_obj_unlink(ctx, grn_string);
       }
       grn_obj_unlink(ctx, &buf);
       grn_obj_unlink(ctx, &buf2);
+      grn_obj_unlink(ctx, &buf3);
+      grn_obj_unlink(ctx, &vbuf);
       grn_table_cursor_close(ctx, cur);
+    }
+    if (normalizer_len) {
+      grn_obj_unlink(ctx, normalizer);
     }
     grn_obj_unlink(ctx, table);
     table = NULL;
@@ -1849,11 +2022,11 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
   char *table_name = NULL;
   unsigned int table_len = 0;
-  char *column_name = NULL;
-  unsigned int column_len = 0;
+  char *column_names = NULL;
   char *normalizer_name = (char *)"NormalizerAuto";
   unsigned int normalizer_len = 14;
   char *input_filter = NULL;
+  char *input_add_prefix = NULL;
   char *mecab_option = (char *)"-Owakati";
   char *input_file = NULL;
 
@@ -1865,23 +2038,35 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
   var = grn_plugin_proc_get_var(ctx, user_data, "column", -1);
   if(GRN_TEXT_LEN(var) != 0) {
-    column_name = GRN_TEXT_VALUE(var);
-    column_len = GRN_TEXT_LEN(var);
+    GRN_TEXT_PUTC(ctx, var, '\0');
+    column_names = GRN_TEXT_VALUE(var);
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
-    normalizer_name = GRN_TEXT_VALUE(var);
-    normalizer_len = GRN_TEXT_LEN(var);
+  if (GRN_TEXT_LEN(var) != 0) {
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      normalizer_len = 0;
+    } else {
+      normalizer_name = GRN_TEXT_VALUE(var);
+      normalizer_len = GRN_TEXT_LEN(var);
+    }
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "input_filter", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     input_filter = GRN_TEXT_VALUE(var);
   }
+  var = grn_plugin_proc_get_var(ctx, user_data, "input_add_prefix", -1);
+  if(GRN_TEXT_LEN(var) != 0) {
+    input_add_prefix = GRN_TEXT_VALUE(var);
+  }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     mecab_option = GRN_TEXT_VALUE(var);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "no_mecab", -1);
+  if(GRN_TEXT_LEN(var) != 0) {
+    mecab_option = NULL;
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
@@ -1965,12 +2150,12 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     get_train_file_path(ctx, train_file);
   }
 
-  if(table_name != NULL && column_name != NULL) {
+  if(table_name != NULL && column_names != NULL) {
     if(column_to_train_file(ctx, train_file,
                             table_name, table_len,
-                            column_name, column_len,
+                            column_names,
                             normalizer_name, normalizer_len,
-                            input_filter, mecab_option) == GRN_TRUE)
+                            input_filter, input_add_prefix, mecab_option) == GRN_TRUE)
      {
         printf("Dump column to train file %s\n", train_file);
      } else {
@@ -2048,7 +2233,6 @@ func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
 
   result++;
   right_trim(result, '"');
-  
   if (result_size > 0) {
     const char *query = result;
     GRN_TEXT_PUTS(ctx, expanded_term, query);
@@ -2075,7 +2259,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[22];
+  grn_expr_var vars[24];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
@@ -2087,11 +2271,12 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[3], "threshold", -1);
   grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "term_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "output_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "file_path", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "expander_mode", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 10, vars);
+  grn_plugin_expr_var_init(ctx, &vars[6], "white_term_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "output_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "file_path", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 11, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "positive_term1", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "negative_term", -1);
@@ -2113,23 +2298,25 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[3], "output_file", -1);
   grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "input_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "input_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "save_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "read_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "debug", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "cbow", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "window", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "sample", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "hs", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "negative", -1);
-  grn_plugin_expr_var_init(ctx, &vars[20], "min-count", -1);
-  grn_plugin_expr_var_init(ctx, &vars[21], "classes", -1);
-  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 22, vars);
+  grn_plugin_expr_var_init(ctx, &vars[6], "input_add_prefix", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "no_mecab", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "save_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "read_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "debug", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "cbow", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "window", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "sample", -1);
+  grn_plugin_expr_var_init(ctx, &vars[20], "hs", -1);
+  grn_plugin_expr_var_init(ctx, &vars[21], "negative", -1);
+  grn_plugin_expr_var_init(ctx, &vars[22], "min-count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[23], "classes", -1);
+  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 24, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,
