@@ -394,8 +394,23 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char st[100][max_size];
   float dist, len, bestd[N], vec[max_size];
   long long a, b, c, d, cn, bi[100];
-
   char op[100];
+  unsigned int max;
+
+  grn_obj *var;
+  int offset = 0;
+  int limit = 10;
+  float threshold = -1;
+  char *normalizer_name = (char *)"NormalizerAuto";
+  int normalizer_len = 14;
+  char *term_filter = NULL;
+  char *white_term_filter = NULL;
+  char *output_filter = NULL;
+  char *mecab_option = NULL;
+  int expander_mode = 0;
+  grn_bool is_phrase = GRN_FALSE;
+
+  long long st_pos = 0;
 
   for (a = 0; a < N; a++) bestd[a] = 0;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
@@ -412,21 +427,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       return NULL;
     }
   }
-
-  grn_obj *var;
-  int offset = 0;
-  int limit = 10;
-  float threshold = -1;
-  char *normalizer_name = (char *)"NormalizerAuto";
-  int normalizer_len = 14;
-  char *term_filter = NULL;
-  char *white_term_filter = NULL;
-  char *output_filter = NULL;
-  char *mecab_option = NULL;
-  int expander_mode = 0;
-  grn_bool is_phrase = GRN_FALSE;
-
-  long long st_pos = 0;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "offset", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -618,23 +618,21 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       if (dist > bestd[a]) {
 
         /* filter */
-        if (threshold > 0 || term_filter != NULL || white_term_filter != NULL) {
-          if (threshold > 0 && dist < threshold) {
+        if (threshold > 0 && dist < threshold) {
+          break;
+        }
+        if (white_term_filter != NULL) {
+          string s = &load_vocab[c * max_w];
+          string t = white_term_filter;
+          if ( !RE2::FullMatch(s, t) ) {
             break;
           }
-          if (white_term_filter != NULL) {
-            string s = &load_vocab[c * max_w];
-            string t = white_term_filter;
-            if ( !RE2::FullMatch(s, t) ) {
-              break;
-            }
-          }
-          if (term_filter != NULL) {
-            string s = &load_vocab[c * max_w];
-            string t = term_filter;
-            if ( RE2::FullMatch(s, t) ) {
-              break;
-            }
+        }
+        if (term_filter != NULL) {
+          string s = &load_vocab[c * max_w];
+          string t = term_filter;
+          if ( RE2::FullMatch(s, t) ) {
+            break;
           }
         }
         /* filter */
@@ -650,7 +648,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
-  unsigned int max;
   if (offset + limit > N) {
     max = N;
   } else {
