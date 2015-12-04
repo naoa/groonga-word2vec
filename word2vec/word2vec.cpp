@@ -1508,7 +1508,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
   grn_obj *normalizer;
-  printf("hogehoge\n");
   if (normalizer_len) {
     normalizer = grn_ctx_get(ctx,
                              normalizer_name,
@@ -1991,7 +1990,6 @@ func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
   unsigned int result_size = 0;
   int recv_flags;
   grn_ctx_recv(ctx, &result, &result_size, &recv_flags);
-
   result[result_size] = '\0';
 
   result++;
