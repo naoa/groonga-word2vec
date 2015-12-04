@@ -545,6 +545,29 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < size; a++) dist += vec[a] * M[a + c * size];
     for (a = 0; a < N; a++) {
       if (dist > bestd[a]) {
+
+        /* filter */
+        if (threshold > 0 || term_filter != NULL || white_term_filter != NULL) {
+          if (threshold > 0 && dist < threshold) {
+            break;
+          }
+          if (white_term_filter != NULL) {
+            string s = &load_vocab[c * max_w];
+            string t = white_term_filter;
+            if ( !RE2::FullMatch(s, t) ) {
+              break;
+            }
+          }
+          if (term_filter != NULL) {
+            string s = &load_vocab[c * max_w];
+            string t = term_filter;
+            if ( RE2::FullMatch(s, t) ) {
+              break;
+            }
+          }
+        }
+        /* filter */
+
         for (d = N - 1; d > a; d--) {
           bestd[d] = bestd[d - 1];
           strcpy(bestw[d], bestw[d - 1]);
@@ -552,28 +575,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         bestd[a] = dist;
         strcpy(bestw[a], &load_vocab[c * max_w]);
         break;
-      }
-    }
-  }
-
-  if (threshold > 0 || term_filter != NULL || white_term_filter != NULL) {
-    for (a = 0; a < N; a++) {
-      if (threshold > 0 && bestd[a] < threshold) {
-        bestd[a] = 0;
-      }
-      if (white_term_filter != NULL) {
-        string s = bestw[a];
-        string t = white_term_filter;
-        if ( !RE2::FullMatch(s, t) ) {
-          bestd[a] = 0;
-        }
-      }
-      if (term_filter != NULL) {
-        string s = bestw[a];
-        string t = term_filter;
-        if ( RE2::FullMatch(s, t) ) {
-          bestd[a] = 0;
-        }
       }
     }
   }
