@@ -79,6 +79,33 @@ long long words, size = 0;
 float *M = NULL;
 char *load_vocab = NULL;
 
+#define SPLIT_BUF_SIZE 4096
+#define NELEMS(a) (sizeof(a) / sizeof(a[0]))
+
+static int in(const char *s, const char c)
+{
+  int i;
+  for (i = 0; s[i] != '\0'; i++)
+    if (s[i] == c) return 1;
+  return 0;
+}
+
+int split(char *ary[], int len, const char *s, const char *delimiter)
+{
+  char buf[SPLIT_BUF_SIZE];
+  int i, j;
+  for (i = 0; i < len && *s != '\0'; i++) {
+    while (in(delimiter, *s))
+      s++;
+    for (j = 0; j < SPLIT_BUF_SIZE && *s != '\0' && !in(delimiter, *s); j++, s++)
+      buf[j] = *s;
+    buf[j] = '\0';
+    if (j == 0) break;
+    ary[i] = strdup(buf);
+  }
+  return i;
+}
+
 static char *
 right_trim(char *s, char del) {
   int i;
@@ -368,8 +395,16 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   float dist, len, bestd[N], vec[max_size];
   long long a, b, c, d, cn, bi[100];
 
+  char op[100];
+
   for (a = 0; a < N; a++) bestd[a] = 0;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
+
+  st1[0] = 0;
+  for(unsigned int i = 0; i < 100; i++){
+    st[i][0] = 0;
+    op[i] = '+';
+  }
 
   if(M == NULL || load_vocab == NULL){
     if(word2vec_load(ctx, user_data) == GRN_FALSE) {
@@ -478,7 +513,26 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       term = s.c_str();
     }
 
-    strcpy(st1, term);
+    int array_len;
+    char *result_array[100];
+    int op_row = 1;
+
+    array_len = split(result_array, NELEMS(result_array), term, " ");
+    for (unsigned int i = 0; i < array_len; i++) {
+      if (result_array[i][0] == '+'){
+        op[op_row] = '+';
+        op_row++;
+      }
+      else if(result_array[i][0] == '-'){
+        op[op_row] = '-';
+        op_row++;
+      } else {
+        strcat(st1, result_array[i]);
+        if ( i < array_len - 1) {
+          strcat(st1, " ");
+        }
+      }
+    }
     st1[strlen(st1) + 1] = 0;
     grn_obj_unlink(ctx, &buf);
   }
@@ -526,11 +580,28 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       return NULL;
     }
   }
-  for (a = 0; a < size; a++) vec[a] = 0;
-  for (b = 0; b < cn; b++) {
-    if (bi[b] == -1) continue;
-    for (a = 0; a < size; a++) vec[a] += M[a + bi[b] * size];
+
+  if (b == 0) return NULL;
+  if(cn == 1) {
+    for (a = 0; a < size; a++) vec[a] = 0;
+    for (b = 0; b < cn; b++) {
+      if (bi[b] == -1) continue;
+      for (a = 0; a < size; a++) vec[a] += M[a + bi[b] * size];
+    }
+  } else {
+    for (a = 0; a < size; a++) vec[a] = 0;
+    for (a = 0; a < size; a++) {
+      for (b = 0; b < cn; b++) {
+        if (bi[b] == -1) continue;
+        if(op[b] == '-') {
+          vec[a] -= M[a + bi[b] * size];
+        } else {
+          vec[a] += M[a + bi[b] * size];
+        }
+      }
+    }
   }
+
   len = 0;
   for (a = 0; a < size; a++) len += vec[a] * vec[a];
   len = sqrt(len);
@@ -876,7 +947,6 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   }
   st1[strlen(st1) + 1] = 0;
 
-  printf("%s\n",st1);
   GRN_PLUGIN_LOG(ctx, GRN_LOG_DEBUG,
                  "[plugin][word2vec][analogy] st1 = %s",st1);
 
@@ -1801,33 +1871,6 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
   fclose(fp);
   return GRN_TRUE;
 
-}
-
-#define SPLIT_BUF_SIZE 1000
-#define NELEMS(a) (sizeof(a) / sizeof(a[0]))
-
-static int in(const char *s, const char c)
-{
-  int i;
-  for (i = 0; s[i] != '\0'; i++)
-    if (s[i] == c) return 1;
-  return 0;
-}
-
-int split(char *ary[], int len, const char *s, const char *delimiter)
-{
-  char buf[SPLIT_BUF_SIZE];
-  int i, j;
-  for (i = 0; i < len && *s != '\0'; i++) {
-    while (in(delimiter, *s))
-      s++;
-    for (j = 0; j < SPLIT_BUF_SIZE && *s != '\0' && !in(delimiter, *s); j++, s++)
-      buf[j] = *s;
-    buf[j] = '\0';
-    if (j == 0) break;
-    ary[i] = strdup(buf);
-  }
-  return i;
 }
 
 static grn_bool
