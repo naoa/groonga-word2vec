@@ -20,14 +20,14 @@ Groongaのカラムからではないテキストファイルからの学習に�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column_names      | Groongaのカラム名 ,区切りで複数指定可。末尾が_の場合、スペースを_に置換してフレーズ化する | NULL | 
+| column_names      | Groongaのカラム名 ,区切りで複数指定可。末尾が_の場合、スペースを_に置換してフレーズ化する。末尾が/の場合、形態素解析する 末尾が*[2-9]の場合、その回数だけ繰り返し出力する | NULL | 
 | train_file     | 学習用テキストファイル |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
 | input_add_prefix   | 入力テキストの先頭に追加したい文字列(１カラム目のみ) | NULL |
-| mecab_option   | MeCabのオプション | -Owakati |
-| no_mecab   | MeCabを使わない場合true | false |
+| input_add_prefix_second   | 入力テキストの先頭に追加したい文字列(2カラム目のみ) | NULL |
+| mecab_option   | MeCabのオプション,Mecab使わない場合NONE | -Owakati |
 | input_file      | 分かち書きされていないテキストファイル(1行最大65535バイト) | NULL |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |

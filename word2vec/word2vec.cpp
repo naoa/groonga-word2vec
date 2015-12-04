@@ -431,7 +431,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if(GRN_TEXT_LEN(var) != 0) {
-    mecab_option = GRN_TEXT_VALUE(var);
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      mecab_option = NULL;
+    } else {
+      mecab_option = GRN_TEXT_VALUE(var);
+    }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "expander_mode", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -735,7 +739,11 @@ command_word2vec_analogy(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_ob
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if(GRN_TEXT_LEN(var) != 0) {
-    mecab_option = GRN_TEXT_VALUE(var);
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      mecab_option = NULL;
+    } else {
+      mecab_option = GRN_TEXT_VALUE(var);
+    }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "expander_mode", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -1794,7 +1802,7 @@ file_to_train_file(grn_ctx *ctx, char *train_file,
 
 }
 
-#define SPLIT_BUF_SIZE 20
+#define SPLIT_BUF_SIZE 1000
 #define NELEMS(a) (sizeof(a) / sizeof(a[0]))
 
 static int in(const char *s, const char c)
@@ -1850,6 +1858,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
   grn_obj *normalizer;
+  printf("hogehoge\n");
   if (normalizer_len) {
     normalizer = grn_ctx_get(ctx,
                              normalizer_name,
@@ -1859,17 +1868,34 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     FILE *fo = fopen(train_file, "wb");
     char *column_name_array[20];
     grn_bool is_phrase[20];
+    grn_bool is_mecab[20];
     int i, t, array_len;
+    int weights[20];
     grn_obj *columns[20];
     grn_table_cursor *cur;
     array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
     for (i = 0; i < array_len; i++) {
+      if (column_name_array[i][strlen(column_name_array[i]) - 2] == '*' &&
+          column_name_array[i][strlen(column_name_array[i]) - 1] >= '2' &&
+          column_name_array[i][strlen(column_name_array[i]) - 1] <= '9') {
+        weights[i] = (int)(column_name_array[i][strlen(column_name_array[i]) - 1]) - (int)('0');
+        right_trim(column_name_array[i], column_name_array[i][strlen(column_name_array[i]) - 1]);
+        right_trim(column_name_array[i], column_name_array[i][strlen(column_name_array[i]) - 1]);
+      } else {
+        weights[i] = 1;
+      }
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == '_') {
         is_phrase[i] = GRN_TRUE;
+        right_trim(column_name_array[i], '_');
       } else {
         is_phrase[i] = GRN_FALSE;
       }
-      right_trim(column_name_array[i], '_');
+      if (column_name_array[i][strlen(column_name_array[i]) - 1] == '/') {
+        is_mecab[i] = GRN_TRUE;
+        right_trim(column_name_array[i], '/');
+      } else {
+        is_mecab[i] = GRN_FALSE;
+      }
       columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
     }
     if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
@@ -1941,7 +1967,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                   grn_obj_unlink(ctx, grn_string);
                 } else {
                   GRN_BULK_REWIND(&buf3);
-                  GRN_TEXT_PUTS(ctx, &buf3, GRN_TEXT_VALUE(&buf2));
+                  GRN_TEXT_SET(ctx, &buf3, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2));
                   GRN_TEXT_PUTC(ctx, &buf3, '\0');
                   column_value = GRN_TEXT_VALUE(&buf3);
                 }
@@ -1966,7 +1992,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                     GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
                   }
                   GRN_TEXT_PUTS(ctx, &buf2, column_value);
-                  grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+                  for (int w = 0; w < weights[i]; w++) {
+                    grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+                  }
                 }
 
                 grn_obj_unlink(ctx, temp_table);
@@ -2012,7 +2040,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               grn_obj_unlink(ctx, grn_string);
             } else {
               GRN_BULK_REWIND(&buf3);
-              GRN_TEXT_PUTS(ctx, &buf3, GRN_TEXT_VALUE(&buf));
+              GRN_TEXT_SET(ctx, &buf3, GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf));
               GRN_TEXT_PUTC(ctx, &buf3, '\0');
               column_value = GRN_TEXT_VALUE(&buf3);
             }
@@ -2031,10 +2059,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             right_trim((char *)column_value, '\n');
             right_trim((char *)column_value, ' ');
 
-            if(mecab_option != NULL && strlen(column_value) > 0){
-              GRN_BULK_REWIND(&buf2);
-              GRN_TEXT_PUTS(ctx, &buf2, column_value);
-              column_value = GRN_TEXT_VALUE(&buf2);
+            if(mecab_option != NULL && is_mecab[i] && strlen(column_value) > 0){
               column_value = sparse(ctx, column_value, mecab_option);
               right_trim((char *)column_value, '\n');
               right_trim((char *)column_value, ' ');
@@ -2047,7 +2072,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                 GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
               }
               GRN_TEXT_PUTS(ctx, &buf2, column_value);
-              grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+              for (int w = 0; w < weights[i]; w++) {
+                grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+              }
             } else {
               if (i == 0) {
                 is_skip = GRN_TRUE;
@@ -2062,10 +2089,13 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             length = grn_vector_get_element(ctx, &vbuf, t, &value, NULL,  NULL);
             if (t > 0) {
               fprintf(fo, " ");
+              //printf(" ");
             }
             fprintf(fo, "%.*s", length, value);
+            //printf("%.*s", length, value);
           }
           fprintf(fo, "\n");
+          //printf("\n");
         }
       }
       for (i = 0; i < array_len; i++) {
@@ -2117,8 +2147,8 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
   var = grn_plugin_proc_get_var(ctx, user_data, "column", -1);
   if(GRN_TEXT_LEN(var) != 0) {
-    GRN_TEXT_PUTC(ctx, var, '\0');
     column_names = GRN_TEXT_VALUE(var);
+    column_names[GRN_TEXT_LEN(var)] = '\0';
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
@@ -2145,11 +2175,11 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if(GRN_TEXT_LEN(var) != 0) {
-    mecab_option = GRN_TEXT_VALUE(var);
-  }
-  var = grn_plugin_proc_get_var(ctx, user_data, "no_mecab", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
-    mecab_option = NULL;
+    if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
+      mecab_option = NULL;
+    } else {
+      mecab_option = GRN_TEXT_VALUE(var);
+    }
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
