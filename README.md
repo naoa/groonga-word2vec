@@ -15,7 +15,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column      | Groongaのカラム名 ,区切りで複数指定可。末尾が_の場合、スペースを_に置換してフレーズ化する。末尾が/の場合、形態素解析する 末尾が*[2-9]の場合、その回数だけ繰り返し出力する | NULL | 
+| column      | Groongaのカラム名  ``,``区切りで複数指定可。  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する。  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する | NULL | 
 | train_file     | 学習用テキストファイル |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
@@ -25,18 +25,20 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | mecab_option   | MeCabのオプション,Mecab使わない場合NONE | -Owakati |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
-| threads    | threads | 4 |
-| size     |  size | 200 |
+| threads    | threads | 12 |
+| size     |  layer1_size | 100 |
 | debug    | debug | 2 |
 | binary    | binary | 1 |
-| cbow    | cbow | 0 |
-| alpha    | alpha | 0.025 |
+| cbow    | cbow skip-gramを使う場合は0 | 1 |
+| alpha    | alpha | 0.025 cbowの場合0.05 |
 | window    | window | 5 |
 | sample    | sample | 1e-3 | 
-| hs    | hs | 1 |
-| negative    | negative | 0 |
+| hs    | hs | 0 |
+| negative    | negative | 5 |
+| iter    | iter | 5 |
 | min-count    | min-count | 5 |
 | classes    | classes | 0 |
+| entence_vectors   | sentence vectorを含める場合は1 | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
 上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  

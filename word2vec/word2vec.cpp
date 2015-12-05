@@ -1901,6 +1901,7 @@ func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
   void *value;
   grn_obj *rc_object;
   grn_obj *var;
+  const char *env;
 
   term = args[0];
   expanded_term = args[1];
@@ -1913,9 +1914,20 @@ func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
   GRN_TEXT_PUTS(ctx, &buf, "word2vec_distance ");
   GRN_TEXT_PUTS(ctx, &buf, GRN_TEXT_VALUE(term));
   GRN_TEXT_PUTS(ctx, &buf, " --expander_mode 1");
-  GRN_TEXT_PUTS(ctx, &buf, " --limit 3");
-  GRN_TEXT_PUTS(ctx, &buf, " --threshold 0.75");
-
+  GRN_TEXT_PUTS(ctx, &buf, " --limit ");
+  env = getenv("GRN_WORD2VEC_EXPANDER_LIMIT");
+  if (env) {
+    GRN_TEXT_PUTS(ctx, &buf, env);
+  } else {
+    GRN_TEXT_PUTS(ctx, &buf, "3");
+  }
+  GRN_TEXT_PUTS(ctx, &buf, " --threshold ");
+  env = getenv("GRN_WORD2VEC_EXPANDER_THRESHOLD");
+  if (env) {
+    GRN_TEXT_PUTS(ctx, &buf, env);
+  } else {
+    GRN_TEXT_PUTS(ctx, &buf, "0.75");
+  }
   grn_ctx_send(ctx, GRN_TEXT_VALUE(&buf) , GRN_TEXT_LEN(&buf), GRN_CTX_QUIET);
 
   char *result = NULL;
