@@ -38,7 +38,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | iter    | iter | 5 |
 | min-count    | min-count | 5 |
 | classes    | classes | 0 |
-| entence_vectors   | sentence vectorを含める場合は1 | 0 |
+| sentence_vectors   | sentence vectorを含める場合は1 | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
 上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  
