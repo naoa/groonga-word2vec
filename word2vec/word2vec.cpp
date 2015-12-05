@@ -673,7 +673,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         strcpy(bestw[a],s.c_str());
       }
       if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-        if ( a < max - 1) {
+        if ( a < max) {
           GRN_TEXT_PUTS(ctx, &buf, ") OR (");
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         } else {
@@ -1854,6 +1854,7 @@ func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
   GRN_TEXT_PUTS(ctx, &buf, "word2vec_distance ");
   GRN_TEXT_PUTS(ctx, &buf, GRN_TEXT_VALUE(term));
   GRN_TEXT_PUTS(ctx, &buf, " --expander_mode 1");
+  GRN_TEXT_PUTS(ctx, &buf, " --normalizer \"NONE\"");
   GRN_TEXT_PUTS(ctx, &buf, " --limit ");
   env = getenv("GRN_WORD2VEC_EXPANDER_LIMIT");
   if (env) {
