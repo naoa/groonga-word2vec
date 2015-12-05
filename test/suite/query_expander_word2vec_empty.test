@@ -1,7 +1,0 @@
-register word2vec/word2vec
-
-table_create table
-column_create table text --type ShortText
-
-select --table table --match_columns text --query database --query_expander QueryExpanderWord2vec
-

@@ -1,9 +1,0 @@
-register word2vec/word2vec
-[[0,0.0,0.0],true]
-table_create table
-[[0,0.0,0.0],true]
-column_create table text --type ShortText
-[[0,0.0,0.0],true]
-select --table table --match_columns text --query database --query_expander QueryExpanderWord2vec
-[[0,0.0,0.0],[[[0],[["_id","UInt32"],["text","ShortText"]]]]]
-#|w| [plugin][word2vec][load] Input file not found : db/db_w2v.bin
