@@ -1788,7 +1788,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   if(GRN_TEXT_LEN(var) != 0) {
     iter = atoi(GRN_TEXT_VALUE(var));
   }
-  var = grn_plugin_proc_get_var(ctx, user_data, "min-count", -1);
+  var = grn_plugin_proc_get_var(ctx, user_data, "min_count", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     min_count = atoi(GRN_TEXT_VALUE(var));
   }
@@ -1947,7 +1947,7 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[19], "hs", -1);
   grn_plugin_expr_var_init(ctx, &vars[20], "negative", -1);
   grn_plugin_expr_var_init(ctx, &vars[21], "iter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[22], "min-count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[22], "min_count", -1);
   grn_plugin_expr_var_init(ctx, &vars[23], "classes", -1);
   grn_plugin_expr_var_init(ctx, &vars[24], "sentence_vectors", -1);
   grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 25, vars);

@@ -36,7 +36,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | hs    | hs | 0 |
 | negative    | negative | 5 |
 | iter    | iter | 5 |
-| min-count    | min-count | 5 |
+| min_count    | min_count | 5 |
 | classes    | classes | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1 | 0 |
 
