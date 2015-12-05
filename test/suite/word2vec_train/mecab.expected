@@ -1,0 +1,71 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "全文検索", "tag": "高速検索", "tags": ["グルンガで検索", "Rroonga"]},
+{"title": "データベース", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+word2vec_train Entries title/,tag/,tags/ --min_count 1
+word2vec_distance "Server"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "server",
+      7.0
+    ],
+    [
+      [
+        "全文",
+        0.236046344041824
+      ],
+      [
+        "</s>",
+        0.121626138687134
+      ],
+      [
+        "検索",
+        0.0758075639605522
+      ],
+      [
+        "postgresql",
+        0.0595995485782623
+      ],
+      [
+        "データベース",
+        0.00604319386184216
+      ],
+      [
+        "グルンガで検索",
+        -0.0134698543697596
+      ],
+      [
+        "高速",
+        -0.0158039312809706
+      ],
+      [
+        "mysql",
+        -0.0216638725250959
+      ],
+      [
+        "rroonga",
+        -0.0652221590280533
+      ]
+    ]
+  ]
+]

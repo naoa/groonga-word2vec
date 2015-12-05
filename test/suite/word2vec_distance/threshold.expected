@@ -1,0 +1,43 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+word2vec_train Entries title,tag,tags --min_count 1
+word2vec_distance "Groonga" --threshold 0.0001
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "groonga",
+      3.0
+    ],
+    [
+      [
+        "rroonga",
+        0.12582902610302
+      ],
+      [
+        "fulltextsearch",
+        0.0368562042713165
+      ]
+    ]
+  ]
+]

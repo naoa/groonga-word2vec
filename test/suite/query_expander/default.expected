@@ -1,0 +1,101 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server1", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server2", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server3", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server4", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server5", "tags": ["MySQL", "PostgreSQL"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],33]
+word2vec_train Entries title,tag,tags*9 --min_count 1 --cbow 0 --normalizer "NONE"
+select Entries --match_columns tags --query "MySQL" --sortby _id --limit 2 --query_expander QueryExpanderWord2vec
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      [
+        33
+      ],
+      [
+        [
+          "_id",
+          "UInt32"
+        ],
+        [
+          "tag",
+          "Tags"
+        ],
+        [
+          "tags",
+          "Tags"
+        ],
+        [
+          "title",
+          "ShortText"
+        ]
+      ],
+      [
+        1,
+        "Library",
+        [
+          "Groonga",
+          "Rroonga"
+        ],
+        "FulltextSearch"
+      ],
+      [
+        2,
+        "Server",
+        [
+          "MySQL",
+          "PostgreSQL"
+        ],
+        "Database"
+      ]
+    ]
+  ]
+]
