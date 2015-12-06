@@ -1784,7 +1784,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       GRN_TEXT_INIT(&vbuf, GRN_OBJ_VECTOR);
 
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
-        grn_bool is_skip = GRN_FALSE;
         GRN_BULK_REWIND(&vbuf);
         for (i = 0; i < array_len; i++) {
           const char *column_value_p = NULL;
@@ -1798,10 +1797,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             GRN_RECORD_INIT(&record, 0, ((&column_value))->header.domain);
             GRN_BULK_REWIND(&get_buf);
             n = grn_vector_size(ctx, &column_value);
-            /* is_skip should be removed after implement search */
-            if (i == 0 && n == 0) {
-              is_skip = GRN_TRUE;
-            }
             for (int s = 0; s < n; s++) {
               column_value_p = get_reference_vector_value(ctx, &column_value, s, &get_buf, &record);
               filter_and_add_vector_element(ctx, &vbuf, i,
@@ -1823,33 +1818,27 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             GRN_TEXT_PUTC(ctx, &get_buf, '\0');
             column_value_p = GRN_TEXT_VALUE(&get_buf);
 
-            /* is_skip should be removed after implement search */
-            is_skip = (!filter_and_add_vector_element(ctx, &vbuf, i,
-                                                      &column_value_p,
-                                                      &get_buf,
-                                                      &out_buf,
-                                                      option) && i == 0);
+            filter_and_add_vector_element(ctx, &vbuf, i,
+                                          &column_value_p,
+                                          &get_buf,
+                                          &out_buf,
+                                          option);
           }
         }
-        if (!is_skip) {
-          if (sentence_vectors) {
-            fprintf(fo, "doc_id:%d", id);
+        if (sentence_vectors) {
+          fprintf(fo, "doc_id:%d", id);
+          fprintf(fo, " ");
+        }
+        for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
+          const char *value;
+          unsigned int length;
+          length = grn_vector_get_element(ctx, &vbuf, t, &value, NULL,  NULL);
+          if (t > 0) {
             fprintf(fo, " ");
           }
-          for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
-            const char *value;
-            unsigned int length;
-            length = grn_vector_get_element(ctx, &vbuf, t, &value, NULL,  NULL);
-            if (t > 0) {
-              fprintf(fo, " ");
-              //printf(" ");
-            }
-            fprintf(fo, "%.*s", length, value);
-            //printf("%.*s", length, value);
-          }
-          fprintf(fo, "\n");
-          //printf("\n");
+          fprintf(fo, "%.*s", length, value);
         }
+        fprintf(fo, "\n");
       }
       for (i = 0; i < array_len; i++) {
         if (columns[i]) {
