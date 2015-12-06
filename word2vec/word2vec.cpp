@@ -81,6 +81,8 @@ typedef struct {
   grn_obj *input_add_prefix;
   grn_obj *input_add_prefix_second;
   char *mecab_option;
+  char *normalizer_name;
+  unsigned int normalizer_len;
   grn_bool is_phrase[20];
   grn_bool is_mecab[20];
   int weights[20];
@@ -294,60 +296,6 @@ sparse(grn_ctx *ctx, const char *string, char *mecab_option)
   return parsed;
 }
 
-static grn_bool
-filter_and_add_vector_element(grn_ctx *ctx,
-                              grn_obj *vbuf,
-                              int i,
-                              const char **column_value_p,
-                              grn_obj *out_buf,
-                              train_option option)
-{
-  if (option.input_filter != NULL || option.is_phrase[i]) {
-    string s = *column_value_p;
-    if (option.input_filter != NULL) {
-      re2::RE2::GlobalReplace(&s, option.input_filter, " ");
-      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
-    }
-    if (option.is_phrase[i]) {
-      re2::RE2::GlobalReplace(&s, " ", "_");
-    }
-    *column_value_p = s.c_str();
-  }
-  right_trim((char *)*column_value_p, '\n');
-  right_trim((char *)*column_value_p, ' ');
-
-  if (option.mecab_option != NULL && option.is_mecab[i] &&
-      strlen(*column_value_p) > 0){
-    *column_value_p = sparse(ctx, *column_value_p, option.mecab_option);
-    right_trim((char *)*column_value_p, '\n');
-    right_trim((char *)*column_value_p, ' ');
-  }
-
-  if (strlen(*column_value_p) == 0){
-    return GRN_FALSE;
-  }
-  else {
-    GRN_BULK_REWIND(out_buf);
-    if (i == 0 && option.input_add_prefix) {
-      GRN_TEXT_PUT(ctx, out_buf,
-                   GRN_TEXT_VALUE(option.input_add_prefix),
-                   GRN_TEXT_LEN(option.input_add_prefix));
-    } else if (i == 1 && option.input_add_prefix_second) {
-      GRN_TEXT_PUT(ctx, out_buf,
-                   GRN_TEXT_VALUE(option.input_add_prefix_second),
-                   GRN_TEXT_LEN(option.input_add_prefix_second));
-    }
-    GRN_TEXT_PUTS(ctx, out_buf, *column_value_p);
-    for (int w = 0; w < option.weights[i]; w++) {
-      grn_vector_add_element(ctx, vbuf,
-                             GRN_TEXT_VALUE(out_buf),
-                             GRN_TEXT_LEN(out_buf),
-                             0, GRN_DB_TEXT);
-    }
-    return GRN_TRUE;
-  }
-}
-
 static const char *
 get_reference_value(grn_ctx *ctx, grn_obj *column_value, grn_obj *buf)
 {
@@ -383,7 +331,9 @@ get_reference_vector_value(grn_ctx *ctx, grn_obj *column_values, int i, grn_obj 
 }
 
 static const char *
-normalize(grn_ctx *ctx, grn_obj *buf, char* normalizer_name, int normalizer_len, grn_obj *outbuf)
+normalize(grn_ctx *ctx, grn_obj *buf,
+          char* normalizer_name, int normalizer_len,
+          grn_obj *outbuf)
 {
   grn_obj *normalizer;
   const char *normalized;
@@ -1692,10 +1642,70 @@ is_record(grn_ctx *ctx, grn_obj *obj)
 }
 
 static grn_bool
+filter_and_add_vector_element(grn_ctx *ctx,
+                              grn_obj *vbuf,
+                              int i,
+                              const char **column_value_p,
+                              grn_obj *get_buf,
+                              grn_obj *out_buf,
+                              train_option option)
+{
+  if (option.normalizer_len) {
+    *column_value_p = normalize(ctx, get_buf,
+                                option.normalizer_name,
+                                option.normalizer_len,
+                                get_buf);
+  }
+  if (option.input_filter != NULL || option.is_phrase[i]) {
+    string s = *column_value_p;
+    if (option.input_filter != NULL) {
+      re2::RE2::GlobalReplace(&s, option.input_filter, " ");
+      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+    }
+    if (option.is_phrase[i]) {
+      re2::RE2::GlobalReplace(&s, " ", "_");
+    }
+    *column_value_p = s.c_str();
+  }
+  right_trim((char *)*column_value_p, '\n');
+  right_trim((char *)*column_value_p, ' ');
+
+  if (option.mecab_option != NULL && option.is_mecab[i] &&
+      strlen(*column_value_p) > 0){
+    *column_value_p = sparse(ctx, *column_value_p, option.mecab_option);
+    right_trim((char *)*column_value_p, '\n');
+    right_trim((char *)*column_value_p, ' ');
+  }
+
+  if (strlen(*column_value_p) == 0){
+    return GRN_FALSE;
+  }
+  else {
+    GRN_BULK_REWIND(out_buf);
+    if (i == 0 && option.input_add_prefix) {
+      GRN_TEXT_PUT(ctx, out_buf,
+                   GRN_TEXT_VALUE(option.input_add_prefix),
+                   GRN_TEXT_LEN(option.input_add_prefix));
+    } else if (i == 1 && option.input_add_prefix_second) {
+      GRN_TEXT_PUT(ctx, out_buf,
+                   GRN_TEXT_VALUE(option.input_add_prefix_second),
+                   GRN_TEXT_LEN(option.input_add_prefix_second));
+    }
+    GRN_TEXT_PUTS(ctx, out_buf, *column_value_p);
+    for (int w = 0; w < option.weights[i]; w++) {
+      grn_vector_add_element(ctx, vbuf,
+                             GRN_TEXT_VALUE(out_buf),
+                             GRN_TEXT_LEN(out_buf),
+                             0, GRN_DB_TEXT);
+    }
+    return GRN_TRUE;
+  }
+}
+
+static grn_bool
 column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *table_name, int table_len,
                      const char *column_names,
-                     char *normalizer_name, int normalizer_len,
                      train_option option)
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
@@ -1765,13 +1775,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             }
             for (int s = 0; s < n; s++) {
               column_value_p = get_reference_vector_value(ctx, &column_value, s, &get_buf, &record);
-              if (normalizer_len) {
-                column_value_p = normalize(ctx, &get_buf,
-                                           normalizer_name, normalizer_len,
-                                           &get_buf);
-              }
               filter_and_add_vector_element(ctx, &vbuf, i,
-                                            &column_value_p, &out_buf,
+                                            &column_value_p,
+                                            &get_buf, &out_buf,
                                             option);
            }
             GRN_OBJ_FIN(ctx, &record);
@@ -1784,18 +1790,15 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               column_value_p = get_reference_value(ctx, &column_value, &column_value);
             }
 
-            if (normalizer_len) {
-              column_value_p = normalize(ctx, &column_value,
-                                       normalizer_name, normalizer_len,
-                                       &get_buf);
-            } else {
-              GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
-              GRN_TEXT_PUTC(ctx, &get_buf, '\0');
-              column_value_p = GRN_TEXT_VALUE(&get_buf);
-            }
+            GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
+            GRN_TEXT_PUTC(ctx, &get_buf, '\0');
+            column_value_p = GRN_TEXT_VALUE(&get_buf);
+
             /* is_skip should be removed after implement search */
             is_skip = (!filter_and_add_vector_element(ctx, &vbuf, i,
-                                                      &column_value_p, &out_buf,
+                                                      &column_value_p,
+                                                      &get_buf,
+                                                      &out_buf,
                                                       option) && i == 0);
           }
         }
@@ -1998,10 +2001,12 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     option.input_add_prefix = input_add_prefix;
     option.input_add_prefix_second = input_add_prefix_second;
     option.mecab_option = mecab_option;
+    option.normalizer_name = normalizer_name;
+    option.normalizer_len = normalizer_len;
+
     if(column_to_train_file(ctx, train_file,
                             table_name, table_len,
                             column_names,
-                            normalizer_name, normalizer_len,
                             option) == GRN_TRUE)
      {
         printf("Dump column to train file %s\n", train_file);
