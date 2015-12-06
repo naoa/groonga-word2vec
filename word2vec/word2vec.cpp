@@ -41,7 +41,6 @@
 #include <pthread.h>
 
 #include <groonga/plugin.h>
-#include <groonga/tokenizer.h>
 
 #include <iostream>
 #include <string>
@@ -68,7 +67,8 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define SPLIT_BUF_SIZE 4096
 #define NELEMS(a) (sizeof(a) / sizeof(a[0]))
 
-static int in(const char *s, const char c)
+static int
+in(const char *s, const char c)
 {
   int i;
   for (i = 0; s[i] != '\0'; i++)
@@ -76,7 +76,8 @@ static int in(const char *s, const char c)
   return 0;
 }
 
-int split(char *ary[], int len, const char *s, const char *delimiter)
+static int
+split(char *ary[], int len, const char *s, const char *delimiter)
 {
   char buf[SPLIT_BUF_SIZE];
   int i, j;
@@ -269,8 +270,8 @@ const long long N = 40; // number of closest words that will be shown
 const long long max_w = 50; // max length of vocabulary entries
 
 #define MAX_MODEL 20
+
 long long words[MAX_MODEL], size[MAX_MODEL] = {0};
-#define MAX_MODEL 20
 float *M[MAX_MODEL] = {NULL};
 char *load_vocab[MAX_MODEL] = {NULL};
 static grn_hash *model_indexes = NULL;
@@ -322,7 +323,7 @@ get_model_index(grn_ctx *ctx, const char *file_name)
                                     0,
                                     GRN_OBJ_TABLE_HASH_KEY|GRN_OBJ_KEY_VAR_SIZE);
     if (!model_indexes) {
-      return GRN_FALSE;
+      return 0;
     }
   }
   model_index = grn_hash_get(ctx, model_indexes,
@@ -335,9 +336,9 @@ get_model_index(grn_ctx *ctx, const char *file_name)
     if (model_index > MAX_MODEL || model_index == GRN_ID_NIL) {
       GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                      "[plugin][word2vec][load] "
-                     "Reach maximum numer of load model : %s",
+                     "Couldn't get model index : %s",
                      file_name);
-      return GRN_FALSE;
+      return 0;
     }
   }
   if (model_index) {
@@ -403,14 +404,14 @@ command_word2vec_load(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj *
   grn_obj *var;
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
 
-  if(GRN_TEXT_LEN(var) == 0) {
+  if (GRN_TEXT_LEN(var) == 0) {
     get_model_file_path(ctx, file_name);
   } else {
     strcpy(file_name, GRN_TEXT_VALUE(var));
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
 
-  if(word2vec_load(ctx, file_name, get_model_index(ctx, file_name)) == GRN_TRUE) {
+  if (word2vec_load(ctx, file_name, get_model_index(ctx, file_name)) == GRN_TRUE) {
     grn_ctx_output_bool(ctx, GRN_TRUE);
   } else {
     grn_ctx_output_bool(ctx, GRN_FALSE);
@@ -464,13 +465,13 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) bestw[a][0] = 0;
 
   st1[0] = 0;
-  for(unsigned int i = 0; i < 100; i++){
+  for (unsigned int i = 0; i < 100; i++){
     st[i][0] = 0;
     op[i] = '+';
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
-  if(GRN_TEXT_LEN(var) == 0) {
+  if (GRN_TEXT_LEN(var) == 0) {
     get_model_file_path(ctx, file_name);
   } else {
     strcpy(file_name, GRN_TEXT_VALUE(var));
@@ -486,18 +487,18 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "offset", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     offset = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "limit", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     limit = atoi(GRN_TEXT_VALUE(var));
     if (limit < 0) {
       limit = N;
     }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "threshold", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     threshold = atof(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
@@ -510,19 +511,19 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "term_filter", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     term_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "white_term_filter", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     white_term_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     output_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     if (GRN_TEXT_LEN(var) == 4 && memcmp(GRN_TEXT_VALUE(var), "NONE", 4) == 0) {
       mecab_option = NULL;
     } else {
@@ -530,22 +531,22 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "expander_mode", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     expander_mode = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "is_phrase", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     is_phrase = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
-  if(GRN_TEXT_LEN(var) != 0) {
+  if (GRN_TEXT_LEN(var) != 0) {
     is_sentence_vectors = atoi(GRN_TEXT_VALUE(var));
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "term", -1);
   a = GRN_TEXT_LEN(var);
 
-  if(a == 0) {
+  if (a == 0) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_NOTICE,
                    "[plugin][word2vec][distance] empty term");
     grn_ctx_output_bool(ctx, GRN_FALSE);
@@ -556,14 +557,14 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
-    if(normalizer_len){
+    if (normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       term = GRN_TEXT_VALUE(var);
     }
     right_trim((char *)term, '\n');
     right_trim((char *)term, ' ');
-    if(mecab_option != NULL && strlen(term) > 0){
+    if (mecab_option != NULL && strlen(term) > 0){
       term = sparse(ctx, term, mecab_option);
       right_trim((char *)term, '\n');
       right_trim((char *)term, ' ');
@@ -584,7 +585,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         op[op_row] = '+';
         op_row++;
       }
-      else if(result_array[i][0] == '-'){
+      else if (result_array[i][0] == '-'){
         op[op_row] = '-';
         op_row++;
       } else {
@@ -1722,7 +1723,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             right_trim((char *)column_value, '\n');
             right_trim((char *)column_value, ' ');
 
-            if(mecab_option != NULL && is_mecab[i] && strlen(column_value) > 0){
+            if (mecab_option != NULL && is_mecab[i] && strlen(column_value) > 0){
               column_value = sparse(ctx, column_value, mecab_option);
               right_trim((char *)column_value, '\n');
               right_trim((char *)column_value, ' ');
