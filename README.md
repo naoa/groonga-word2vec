@@ -61,6 +61,69 @@ Vocab size: 1
 Words in train file: 0
 ```
 
+k-meansクラスタリングの出力例
+
+```
+word2vec_train Entries title,tag,tags --min_count 1 --classes 3
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      9
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Int32"
+      ]
+    ],
+    [
+      "postgresql",
+      2
+    ],
+    [
+      "library",
+      2
+    ],
+    [
+      "database",
+      2
+    ],
+    [
+      "mysql",
+      1
+    ],
+    [
+      "rroonga",
+      1
+    ],
+    [
+      "fulltextsearch",
+      1
+    ],
+    [
+      "</s>",
+      0
+    ],
+    [
+      "server",
+      0
+    ],
+    [
+      "groonga",
+      0
+    ]
+  ]
+```
+
 
 ### word2vec_load
 
