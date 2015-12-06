@@ -134,6 +134,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | output_filter   | 出力結果から除去したい文字列の正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
+| is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
