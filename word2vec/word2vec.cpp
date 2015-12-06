@@ -1852,7 +1852,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           GRN_BULK_REWIND(&column_value);
           grn_obj_get_value(ctx, columns[i], id, &column_value);
 
-          /* refrence vector */
+          /* reference vector */
           if ((&(column_value))->header.type == GRN_UVECTOR) {
             grn_obj record;
             int n;
@@ -1868,23 +1868,43 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
            }
             GRN_OBJ_FIN(ctx, &record);
           } else {
-            /* Todo: support vector column */
             GRN_BULK_REWIND(&get_buf);
 
-            /* reference column */
-            if (is_record(ctx, &column_value)) {
-              column_value_p = get_reference_value(ctx, &column_value, &column_value);
+            /* vector column */
+            if ((&(column_value))->header.type == GRN_VECTOR) {
+              grn_obj record;
+              int n;
+              GRN_RECORD_INIT(&record, 0, ((&column_value))->header.domain);
+              GRN_BULK_REWIND(&get_buf);
+              n = grn_vector_size(ctx, &column_value);
+              for (int s = 0; s < n; s++) {
+                unsigned int length;
+                length = grn_vector_get_element(ctx, &column_value, s, &column_value_p, NULL, NULL);
+
+                GRN_BULK_REWIND(&get_buf);
+                GRN_TEXT_SET(ctx, &get_buf, column_value_p, length);
+                GRN_TEXT_PUTC(ctx, &get_buf, '\0');
+                column_value_p = GRN_TEXT_VALUE(&get_buf);
+                filter_and_add_vector_element(ctx, &vbuf, i,
+                                              &column_value_p,
+                                              &get_buf, &out_buf,
+                                              option);
+
+              }
+              GRN_OBJ_FIN(ctx, &record);
+            } else {
+              /* reference column */
+              if (is_record(ctx, &column_value)) {
+                column_value_p = get_reference_value(ctx, &column_value, &column_value);
+              }
+              GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
+              GRN_TEXT_PUTC(ctx, &get_buf, '\0');
+              column_value_p = GRN_TEXT_VALUE(&get_buf);
+              filter_and_add_vector_element(ctx, &vbuf, i,
+                                            &column_value_p,
+                                            &get_buf, &out_buf,
+                                            option);
             }
-
-            GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
-            GRN_TEXT_PUTC(ctx, &get_buf, '\0');
-            column_value_p = GRN_TEXT_VALUE(&get_buf);
-
-            filter_and_add_vector_element(ctx, &vbuf, i,
-                                          &column_value_p,
-                                          &get_buf,
-                                          &out_buf,
-                                          option);
           }
         }
         if (sentence_vectors) {
