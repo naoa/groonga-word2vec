@@ -286,6 +286,40 @@ sparse(grn_ctx *ctx, const char *string, char *mecab_option)
 }
 
 static const char *
+get_reference_value(grn_ctx *ctx, grn_obj *column_value, grn_obj *buf)
+{
+  grn_obj *temp_table;
+  grn_id temp_id;
+  grn_obj temp_key;
+  char key_name[GRN_TABLE_MAX_KEY_SIZE];
+  int key_len;
+  const char *column_value_p;
+  temp_table = grn_ctx_at(ctx, column_value->header.domain);
+  temp_id = GRN_RECORD_VALUE(column_value);
+  GRN_OBJ_INIT(&temp_key, GRN_BULK, 0, temp_table->header.domain);
+  key_len = grn_table_get_key(ctx, temp_table, temp_id, key_name, GRN_TABLE_MAX_KEY_SIZE);
+  GRN_BULK_REWIND(buf);
+  GRN_TEXT_SET(ctx, buf, key_name, key_len);
+  GRN_TEXT_PUTC(ctx, buf, '\0');
+  column_value_p = GRN_TEXT_VALUE(buf);
+
+  grn_obj_unlink(ctx, temp_table);
+  GRN_OBJ_FIN(ctx, &temp_key);
+  return column_value_p;
+}
+
+static const char *
+get_reference_vector_value(grn_ctx *ctx, grn_obj *column_values, int i, grn_obj *buf, grn_obj *record)
+{
+  grn_id id;
+  const char *column_value_p;
+  id = grn_uvector_get_element(ctx, column_values, i, NULL);
+  GRN_RECORD_SET(ctx, record, id);
+  column_value_p = get_reference_value(ctx, record, buf);
+  return column_value_p;
+}
+
+static const char *
 normalize(grn_ctx *ctx, grn_obj *buf, char* normalizer_name, int normalizer_len, grn_obj *outbuf)
 {
   grn_obj *normalizer;
@@ -294,6 +328,7 @@ normalize(grn_ctx *ctx, grn_obj *buf, char* normalizer_name, int normalizer_len,
 
   unsigned int normalized_length_in_bytes;
   unsigned int normalized_n_characters;
+  const char *ret_normalized;
 
   normalizer = grn_ctx_get(ctx,
                            normalizer_name,
@@ -309,8 +344,11 @@ normalize(grn_ctx *ctx, grn_obj *buf, char* normalizer_name, int normalizer_len,
                             &normalized_length_in_bytes,
                             &normalized_n_characters);
 
-  GRN_TEXT_PUTS(ctx, outbuf, normalized);
-  const char *ret_normalized;
+  GRN_BULK_REWIND(outbuf);
+  if (normalized_length_in_bytes > 0) {
+    GRN_TEXT_SET(ctx, outbuf, normalized, normalized_length_in_bytes);
+  }
+  GRN_TEXT_PUTC(ctx, outbuf, '\0');
   ret_normalized = GRN_TEXT_VALUE(outbuf);
 
   grn_obj_unlink(ctx, grn_string);
@@ -1601,12 +1639,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *mecab_option)
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
-  grn_obj *normalizer;
-  if (normalizer_len) {
-    normalizer = grn_ctx_get(ctx,
-                             normalizer_name,
-                             normalizer_len);
-  }
   if (table) {
     FILE *fo = fopen(train_file, "wb");
     char *column_name_array[20];
@@ -1616,6 +1648,8 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     int weights[20];
     grn_obj *columns[20];
     grn_table_cursor *cur;
+
+    /* parse column option */
     array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
     for (i = 0; i < array_len; i++) {
       if (column_name_array[i][strlen(column_name_array[i]) - 2] == '*' &&
@@ -1641,155 +1675,91 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       }
       columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
     }
+
+    /* output and filter column */
     if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
                                      GRN_CURSOR_BY_ID))) {
       grn_id id;
-      grn_obj buf, buf2, buf3;
+      grn_obj column_value, get_buf, out_buf;
       grn_obj vbuf;
-      GRN_TEXT_INIT(&buf, 0);
-      GRN_TEXT_INIT(&buf2, 0);
-      GRN_TEXT_INIT(&buf3, 0);
+      GRN_TEXT_INIT(&column_value, 0);
+      GRN_TEXT_INIT(&get_buf, 0);
+      GRN_TEXT_INIT(&out_buf, 0);
       GRN_TEXT_INIT(&vbuf, GRN_OBJ_VECTOR);
 
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
         grn_bool is_skip = GRN_FALSE;
         GRN_BULK_REWIND(&vbuf);
         for (i = 0; i < array_len; i++) {
-          const char *column_value = NULL;
-          GRN_BULK_REWIND(&buf);
-          grn_obj_get_value(ctx, columns[i], id, &buf);
+          const char *column_value_p = NULL;
+          GRN_BULK_REWIND(&column_value);
+          grn_obj_get_value(ctx, columns[i], id, &column_value);
 
-          if ((&(buf))->header.type == GRN_UVECTOR) {
-            grn_obj value;
+          /* refrence vector */
+          if ((&(column_value))->header.type == GRN_UVECTOR) {
             grn_obj record;
-            int n, s;
-            GRN_UINT32_INIT(&value, 0);
-            GRN_RECORD_INIT(&record, 0, ((&buf))->header.domain);
-            GRN_BULK_REWIND(&buf2);
-            n = grn_vector_size(ctx, &buf);
+            int n;
+            GRN_RECORD_INIT(&record, 0, ((&column_value))->header.domain);
+            GRN_BULK_REWIND(&get_buf);
+            n = grn_vector_size(ctx, &column_value);
             if (i == 0 && n == 0) {
               is_skip = GRN_TRUE;
             }
-            for (s = 0; s < n; s++) {
-              grn_id tid;
-              tid = grn_uvector_get_element(ctx, &buf, s, NULL);
-              GRN_RECORD_SET(ctx, &record, tid);
-              {
-                grn_obj *temp_table;
-                grn_id temp_id;
-                grn_obj temp_key;
-                char key_name[GRN_TABLE_MAX_KEY_SIZE];
-                int key_len;
-                temp_table = grn_ctx_at(ctx, (&record)->header.domain);
-                temp_id = GRN_RECORD_VALUE(&record);
-                GRN_OBJ_INIT(&temp_key, GRN_BULK, 0, temp_table->header.domain);
-                key_len = grn_table_get_key(ctx, temp_table, temp_id, key_name, GRN_TABLE_MAX_KEY_SIZE);
-                GRN_BULK_REWIND(&buf2);
-                GRN_TEXT_SET(ctx, &buf2, key_name, key_len);
-                GRN_TEXT_PUTC(ctx, &buf2, '\0');
-                column_value = GRN_TEXT_VALUE(&buf2);
+            for (int s = 0; s < n; s++) {
+              column_value_p = get_reference_vector_value(ctx, &column_value, s, &get_buf, &record);
+              if (normalizer_len) {
+                column_value_p = normalize(ctx, &get_buf,
+                                           normalizer_name, normalizer_len,
+                                           &get_buf);
+              }
 
-                if (normalizer_len) {
-                  grn_obj *grn_string;
-                  const char *normalized;
-                  unsigned int normalized_length_in_bytes;
-                  unsigned int normalized_n_characters;
-                  grn_string = grn_string_open(ctx,
-                                               GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2),
-                                               normalizer, 0);
-                  grn_string_get_normalized(ctx, grn_string,
-                                            &normalized,
-                                            &normalized_length_in_bytes,
-                                            &normalized_n_characters);
-                  GRN_BULK_REWIND(&buf3);
-                  if (normalized_length_in_bytes > 0) {
-                    GRN_TEXT_SET(ctx, &buf3, normalized, normalized_length_in_bytes);
-                  }
-                  GRN_TEXT_PUTC(ctx, &buf3, '\0');
-                  column_value = GRN_TEXT_VALUE(&buf3);
-                  grn_obj_unlink(ctx, grn_string);
-                } else {
-                  GRN_BULK_REWIND(&buf3);
-                  GRN_TEXT_SET(ctx, &buf3, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2));
-                  GRN_TEXT_PUTC(ctx, &buf3, '\0');
-                  column_value = GRN_TEXT_VALUE(&buf3);
+              if (input_filter != NULL || is_phrase[i]) {
+                string s = column_value_p;
+                if (input_filter != NULL) {
+                  re2::RE2::GlobalReplace(&s, input_filter, " ");
+                  re2::RE2::GlobalReplace(&s, "[ ]+", " ");
                 }
-
-                if (input_filter != NULL || is_phrase[i]) {
-                  string s = column_value;
-                  if (input_filter != NULL) {
-                    re2::RE2::GlobalReplace(&s, input_filter, " ");
-                    re2::RE2::GlobalReplace(&s, "[ ]+", " ");
-                  }
-                  if (is_phrase[i]) {
-                    re2::RE2::GlobalReplace(&s, " ", "_");
-                  }
-                  column_value = s.c_str();
+                if (is_phrase[i]) {
+                  re2::RE2::GlobalReplace(&s, " ", "_");
                 }
+                column_value_p = s.c_str();
+              }
 
-                if (strlen(column_value) > 0){
-                  GRN_BULK_REWIND(&buf2);
-                  if (i == 0 && input_add_prefix) {
-                    GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
-                  } else if (i == 1 && input_add_prefix_second) {
-                    GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
-                  }
-                  GRN_TEXT_PUTS(ctx, &buf2, column_value);
-                  for (int w = 0; w < weights[i]; w++) {
-                    grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
-                  }
+              if (strlen(column_value_p) > 0){
+                GRN_BULK_REWIND(&out_buf);
+                if (i == 0 && input_add_prefix) {
+                  GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
+                } else if (i == 1 && input_add_prefix_second) {
+                  GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
                 }
-
-                grn_obj_unlink(ctx, temp_table);
-                GRN_OBJ_FIN(ctx, &temp_key);
+                GRN_TEXT_PUTS(ctx, &out_buf, column_value_p);
+                for (int w = 0; w < weights[i]; w++) {
+                  grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&out_buf), GRN_TEXT_LEN(&out_buf), 0, GRN_DB_TEXT);
+                }
               }
             }
-            grn_obj_unlink(ctx, &value);
             GRN_OBJ_FIN(ctx, &record);
           } else {
-            if (is_record(ctx, &buf)) {
-              grn_obj *temp_table;
-              grn_id temp_id;
-              grn_obj temp_key;
-              char key_name[GRN_TABLE_MAX_KEY_SIZE];
-              int key_len;
-              temp_table = grn_ctx_at(ctx, (&buf)->header.domain);
-              temp_id = GRN_RECORD_VALUE(&buf);
-              GRN_OBJ_INIT(&temp_key, GRN_BULK, 0, temp_table->header.domain);
-              key_len = grn_table_get_key(ctx, temp_table, temp_id, key_name, GRN_TABLE_MAX_KEY_SIZE);
-              GRN_BULK_REWIND(&buf);
-              GRN_TEXT_SET(ctx, &buf, key_name, key_len);
-              GRN_TEXT_PUTC(ctx, &buf, '\0');
+            /* Todo: support vector column */
+            GRN_BULK_REWIND(&get_buf);
+
+            /* reference column */
+            if (is_record(ctx, &column_value)) {
+              column_value_p = get_reference_value(ctx, &column_value, &column_value);
             }
 
             if (normalizer_len) {
-              grn_obj *grn_string;
-              const char *normalized;
-              unsigned int normalized_length_in_bytes;
-              unsigned int normalized_n_characters;
-              grn_string = grn_string_open(ctx,
-                                           GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf),
-                                           normalizer, 0);
-              grn_string_get_normalized(ctx, grn_string,
-                                        &normalized,
-                                        &normalized_length_in_bytes,
-                                        &normalized_n_characters);
-              GRN_BULK_REWIND(&buf3);
-              if (normalized_length_in_bytes > 0) {
-                GRN_TEXT_SET(ctx, &buf3, normalized, normalized_length_in_bytes);
-              }
-              GRN_TEXT_PUTC(ctx, &buf3, '\0');
-              column_value = GRN_TEXT_VALUE(&buf3);
-              grn_obj_unlink(ctx, grn_string);
+              column_value_p = normalize(ctx, &column_value,
+                                       normalizer_name, normalizer_len,
+                                       &get_buf);
             } else {
-              GRN_BULK_REWIND(&buf3);
-              GRN_TEXT_SET(ctx, &buf3, GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf));
-              GRN_TEXT_PUTC(ctx, &buf3, '\0');
-              column_value = GRN_TEXT_VALUE(&buf3);
+              GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
+              GRN_TEXT_PUTC(ctx, &get_buf, '\0');
+              column_value_p = GRN_TEXT_VALUE(&get_buf);
             }
 
             if (input_filter != NULL || is_phrase[i]) {
-              string s = column_value;
+              string s = column_value_p;
               if (input_filter != NULL) {
                 re2::RE2::GlobalReplace(&s, input_filter, " ");
                 re2::RE2::GlobalReplace(&s, "[ ]+", " ");
@@ -1797,26 +1767,26 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               if (is_phrase[i]) {
                 re2::RE2::GlobalReplace(&s, " ", "_");
               }
-              column_value = s.c_str();
+              column_value_p = s.c_str();
             }
-            right_trim((char *)column_value, '\n');
-            right_trim((char *)column_value, ' ');
+            right_trim((char *)column_value_p, '\n');
+            right_trim((char *)column_value_p, ' ');
 
-            if (mecab_option != NULL && is_mecab[i] && strlen(column_value) > 0){
-              column_value = sparse(ctx, column_value, mecab_option);
-              right_trim((char *)column_value, '\n');
-              right_trim((char *)column_value, ' ');
+            if (mecab_option != NULL && is_mecab[i] && strlen(column_value_p) > 0){
+              column_value_p = sparse(ctx, column_value_p, mecab_option);
+              right_trim((char *)column_value_p, '\n');
+              right_trim((char *)column_value_p, ' ');
             }
-            if (strlen(column_value) > 0){
-              GRN_BULK_REWIND(&buf2);
+            if (strlen(column_value_p) > 0){
+              GRN_BULK_REWIND(&out_buf);
               if (i == 0 && input_add_prefix) {
-                GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
+                GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
               } else if (i == 1 && input_add_prefix_second) {
-                GRN_TEXT_PUT(ctx, &buf2, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
+                GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
               }
-              GRN_TEXT_PUTS(ctx, &buf2, column_value);
+              GRN_TEXT_PUTS(ctx, &out_buf, column_value_p);
               for (int w = 0; w < weights[i]; w++) {
-                grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&buf2), GRN_TEXT_LEN(&buf2), 0, GRN_DB_TEXT);
+                grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&out_buf), GRN_TEXT_LEN(&out_buf), 0, GRN_DB_TEXT);
               }
             } else {
               if (i == 0) {
@@ -1850,14 +1820,11 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           grn_obj_unlink(ctx, columns[i]);
         }
       }
-      grn_obj_unlink(ctx, &buf);
-      grn_obj_unlink(ctx, &buf2);
-      grn_obj_unlink(ctx, &buf3);
+      grn_obj_unlink(ctx, &column_value);
+      grn_obj_unlink(ctx, &get_buf);
+      grn_obj_unlink(ctx, &out_buf);
       grn_obj_unlink(ctx, &vbuf);
       grn_table_cursor_close(ctx, cur);
-    }
-    if (normalizer_len) {
-      grn_obj_unlink(ctx, normalizer);
     }
     grn_obj_unlink(ctx, table);
     table = NULL;
