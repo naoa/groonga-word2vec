@@ -844,6 +844,10 @@ static void InitUnigramTable() {
   double train_words_pow = 0;
   double d1, power = 0.75;
   table = (int *)malloc(table_size * sizeof(int));
+  if (table == NULL) {
+    fprintf(stderr, "cannot allocate memory for the table\n");
+    exit(1);
+  }
   for (a = 0; a < vocab_size; a++) train_words_pow += pow(vocab[a].cn, power);
   i = 0;
   d1 = pow(vocab[i].cn, power) / train_words_pow;
@@ -929,6 +933,24 @@ static int AddWordToVocab(char *word) {
 // Used later for sorting by word counts
 static int VocabCompare(const void *a, const void *b) {
     return ((struct vocab_word *)b)->cn - ((struct vocab_word *)a)->cn;
+}
+
+static void DestroyVocab() {
+  int a;
+
+  for (a = 0; a < vocab_size; a++) {
+    if (vocab[a].word != NULL) {
+      free(vocab[a].word);
+    }
+    if (vocab[a].code != NULL) {
+      free(vocab[a].code);
+    }
+    if (vocab[a].point != NULL) {
+      free(vocab[a].point);
+    }
+  }
+  free(vocab[vocab_size].word);
+  free(vocab);
 }
 
 // Sorts the vocabulary by frequency using word counts
@@ -1149,6 +1171,18 @@ static void InitNet() {
   CreateBinaryTree();
 }
 
+static void DestroyNet() {
+  if (syn0 != NULL) {
+    free(syn0);
+  }
+  if (syn1 != NULL) {
+    free(syn1);
+  }
+  if (syn1neg != NULL) {
+    free(syn1neg);
+  }
+}
+
 static void *TrainModelThread(void *id) {
   long long a, b, d, cw, word, last_word, sentence_length = 0, sentence_position = 0;
   long long word_count = 0, last_word_count = 0, sen[MAX_SENTENCE_LENGTH + 1];
@@ -1159,6 +1193,10 @@ static void *TrainModelThread(void *id) {
   real *neu1 = (real *)calloc(layer1_size, sizeof(real));
   real *neu1e = (real *)calloc(layer1_size, sizeof(real));
   FILE *fi = fopen(train_file, "rb");
+  if (fi == NULL) {
+    fprintf(stderr, "no such file or directory: %s", train_file);
+    exit(1);
+  }
   fseek(fi, file_size / (long long)num_threads * (long long)id, SEEK_SET);
   while (1) {
     if (word_count - last_word_count > 10000) {
@@ -1349,6 +1387,10 @@ static void TrainModel() {
   long a, b, c, d;
   FILE *fo;
   pthread_t *pt = (pthread_t *)malloc(num_threads * sizeof(pthread_t));
+  if (pt == NULL) {
+    fprintf(stderr, "cannot allocate memory for threads\n");
+    exit(1);
+  }
   printf("Starting training using file %s\n", train_file);
   starting_alpha = alpha;
   if (read_vocab_file[0] != 0) ReadVocab(); else LearnVocabFromTrainFile();
@@ -1360,6 +1402,10 @@ static void TrainModel() {
   for (a = 0; a < num_threads; a++) pthread_create(&pt[a], NULL, TrainModelThread, (void *)a);
   for (a = 0; a < num_threads; a++) pthread_join(pt[a], NULL);
   fo = fopen(output_file, "wb");
+  if (fo == NULL) {
+    fprintf(stderr, "Cannot open %s: permission denied\n", output_file);
+    exit(1);
+  }
   if (classes == 0) {
     // Save the word vectors
     fprintf(fo, "%lld %lld\n", vocab_size, layer1_size);
@@ -1373,6 +1419,10 @@ static void TrainModel() {
     // Run K-means on the word vectors
     int clcn = classes, iter = 10, closeid;
     int *centcn = (int *)malloc(classes * sizeof(int));
+    if (centcn == NULL) {
+      fprintf(stderr, "cannot allocate memory for centcn\n");
+      exit(1);
+    }
     int *cl = (int *)calloc(vocab_size, sizeof(int));
     real closev, x;
     real *cent = (real *)calloc(classes * layer1_size, sizeof(real));
@@ -1414,6 +1464,9 @@ static void TrainModel() {
     free(cl);
   }
   fclose(fo);
+  free(table);
+  free(pt);
+  DestroyVocab();
 }
 
 static int ArgPos(char *str, int argc, char **argv) {
@@ -1889,11 +1942,18 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   vocab = (struct vocab_word *)calloc(vocab_max_size, sizeof(struct vocab_word));
   vocab_hash = (int *)calloc(vocab_hash_size, sizeof(int));
   expTable = (real *)malloc((EXP_TABLE_SIZE + 1) * sizeof(real));
+  if (expTable == NULL) {
+    fprintf(stderr, "out of memory\n");
+    return NULL;
+  }
   for (int i = 0; i < EXP_TABLE_SIZE; i++) {
     expTable[i] = exp((i / (real)EXP_TABLE_SIZE * 2 - 1) * MAX_EXP); // Precompute the exp() table
     expTable[i] = expTable[i] / (expTable[i] + 1);                   // Precompute f(x) = x / (x + 1)
   }
   TrainModel();
+  DestroyNet();
+  free(vocab_hash);
+  free(expTable);
 
   return NULL;
 }
