@@ -23,6 +23,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
 | input_add_prefix   | 1カラム目の出力の先頭に追加したい文字列 | NULL |
 | input_add_prefix_second   | 2カラム目の出力の先頭に追加したい文字列 | NULL |
+| is_output_file   | classes>=1でk-meansの出力結果をファイルとする場合1 | 0 |
 | mecab_option   | MeCabのオプション Mecab使わない場合NONE | -Owakati |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
@@ -35,7 +36,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | window    | 文脈とする前後の幅 | 5 |
 | sample    |  高頻度の単語を無視する閾値 | 1e-3 | 
 | hs    | 階層的Softmax(高速化手法) | 0 |
-| negative    | ネガティブサンプリングの単語数(高速化手法) | 5 |
+| negative    | ネガティブサンプリングの単語数(高速化手法,ランダム要素有) | 5 |
 | iter    | 学習回数 | 5 |
 | min_count    | 単語の最低出現数 | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
