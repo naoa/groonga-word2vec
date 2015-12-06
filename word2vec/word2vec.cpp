@@ -1398,7 +1398,6 @@ static void *TrainModelThread(void *id) {
 
 static void TrainModel() {
   long a, b, c, d;
-  FILE *fo;
   pthread_t *pt = (pthread_t *)malloc(num_threads * sizeof(pthread_t));
   if (pt == NULL) {
     fprintf(stderr, "cannot allocate memory for threads\n");
@@ -1414,72 +1413,83 @@ static void TrainModel() {
   start = clock();
   for (a = 0; a < num_threads; a++) pthread_create(&pt[a], NULL, TrainModelThread, (void *)a);
   for (a = 0; a < num_threads; a++) pthread_join(pt[a], NULL);
+  free(pt);
+}
+
+static void SaveWordVectors() {
+  long a, b, c, d;
+  FILE *fo;
   fo = fopen(output_file, "wb");
   if (fo == NULL) {
     fprintf(stderr, "Cannot open %s: permission denied\n", output_file);
     exit(1);
   }
-  if (classes == 0) {
-    // Save the word vectors
-    fprintf(fo, "%lld %lld\n", vocab_size, layer1_size);
-    for (a = 0; a < vocab_size; a++) {
-      fprintf(fo, "%s ", vocab[a].word);
-      if (binary) for (b = 0; b < layer1_size; b++) fwrite(&syn0[a * layer1_size + b], sizeof(real), 1, fo);
-      else for (b = 0; b < layer1_size; b++) fprintf(fo, "%lf ", syn0[a * layer1_size + b]);
-      fprintf(fo, "\n");
-    }
-  } else {
-    // Run K-means on the word vectors
-    int clcn = classes, iter = 10, closeid;
-    int *centcn = (int *)malloc(classes * sizeof(int));
-    if (centcn == NULL) {
-      fprintf(stderr, "cannot allocate memory for centcn\n");
-      exit(1);
-    }
-    int *cl = (int *)calloc(vocab_size, sizeof(int));
-    real closev, x;
-    real *cent = (real *)calloc(classes * layer1_size, sizeof(real));
-    for (a = 0; a < vocab_size; a++) cl[a] = a % clcn;
-    for (a = 0; a < iter; a++) {
-      for (b = 0; b < clcn * layer1_size; b++) cent[b] = 0;
-      for (b = 0; b < clcn; b++) centcn[b] = 1;
-      for (c = 0; c < vocab_size; c++) {
-        for (d = 0; d < layer1_size; d++) cent[layer1_size * cl[c] + d] += syn0[c * layer1_size + d];
-        centcn[cl[c]]++;
-      }
-      for (b = 0; b < clcn; b++) {
-        closev = 0;
-        for (c = 0; c < layer1_size; c++) {
-          cent[layer1_size * b + c] /= centcn[b];
-          closev += cent[layer1_size * b + c] * cent[layer1_size * b + c];
-        }
-        closev = sqrt(closev);
-        for (c = 0; c < layer1_size; c++) cent[layer1_size * b + c] /= closev;
-      }
-      for (c = 0; c < vocab_size; c++) {
-        closev = -10;
-        closeid = 0;
-        for (d = 0; d < clcn; d++) {
-          x = 0;
-          for (b = 0; b < layer1_size; b++) x += cent[layer1_size * d + b] * syn0[c * layer1_size + b];
-          if (x > closev) {
-            closev = x;
-            closeid = d;
-          }
-        }
-        cl[c] = closeid;
-      }
-    }
-    // Save the K-means classes
-    for (a = 0; a < vocab_size; a++) fprintf(fo, "%s %d\n", vocab[a].word, cl[a]);
-    free(centcn);
-    free(cent);
-    free(cl);
+  // Save the word vectors
+  fprintf(fo, "%lld %lld\n", vocab_size, layer1_size);
+  for (a = 0; a < vocab_size; a++) {
+    fprintf(fo, "%s ", vocab[a].word);
+    if (binary) for (b = 0; b < layer1_size; b++) fwrite(&syn0[a * layer1_size + b], sizeof(real), 1, fo);
+    else for (b = 0; b < layer1_size; b++) fprintf(fo, "%lf ", syn0[a * layer1_size + b]);
+    fprintf(fo, "\n");
   }
   fclose(fo);
-  free(table);
-  free(pt);
-  DestroyVocab();
+}
+
+static void SaveKmeansClasses() {
+  long a, b, c, d;
+  FILE *fo;
+  // Run K-means on the word vectors
+  int clcn = classes, iter = 10, closeid;
+  int *centcn = (int *)malloc(classes * sizeof(int));
+  if (centcn == NULL) {
+    fprintf(stderr, "cannot allocate memory for centcn\n");
+    exit(1);
+  }
+  int *cl = (int *)calloc(vocab_size, sizeof(int));
+  real closev, x;
+  real *cent = (real *)calloc(classes * layer1_size, sizeof(real));
+  for (a = 0; a < vocab_size; a++) cl[a] = a % clcn;
+  for (a = 0; a < iter; a++) {
+    for (b = 0; b < clcn * layer1_size; b++) cent[b] = 0;
+    for (b = 0; b < clcn; b++) centcn[b] = 1;
+    for (c = 0; c < vocab_size; c++) {
+      for (d = 0; d < layer1_size; d++) cent[layer1_size * cl[c] + d] += syn0[c * layer1_size + d];
+      centcn[cl[c]]++;
+    }
+    for (b = 0; b < clcn; b++) {
+      closev = 0;
+      for (c = 0; c < layer1_size; c++) {
+        cent[layer1_size * b + c] /= centcn[b];
+        closev += cent[layer1_size * b + c] * cent[layer1_size * b + c];
+      }
+      closev = sqrt(closev);
+      for (c = 0; c < layer1_size; c++) cent[layer1_size * b + c] /= closev;
+    }
+    for (c = 0; c < vocab_size; c++) {
+      closev = -10;
+      closeid = 0;
+      for (d = 0; d < clcn; d++) {
+        x = 0;
+        for (b = 0; b < layer1_size; b++) x += cent[layer1_size * d + b] * syn0[c * layer1_size + b];
+        if (x > closev) {
+          closev = x;
+          closeid = d;
+        }
+      }
+      cl[c] = closeid;
+    }
+  }
+  // Save the K-means classes
+  fo = fopen(output_file, "wb");
+  if (fo == NULL) {
+    fprintf(stderr, "Cannot open %s: permission denied\n", output_file);
+    exit(1);
+  }
+  for (a = 0; a < vocab_size; a++) fprintf(fo, "%s %d\n", vocab[a].word, cl[a]);
+  free(centcn);
+  free(cent);
+  free(cl);
+  fclose(fo);
 }
 
 static int ArgPos(char *str, int argc, char **argv) {
@@ -1964,6 +1974,13 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     expTable[i] = expTable[i] / (expTable[i] + 1);                   // Precompute f(x) = x / (x + 1)
   }
   TrainModel();
+  if (classes == 0) {
+    SaveWordVectors();
+  } else {
+    SaveKmeansClasses();
+  }
+  free(table);
+  DestroyVocab();
   DestroyNet();
   free(vocab_hash);
   free(expTable);
