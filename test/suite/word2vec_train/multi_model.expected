@@ -62,46 +62,6 @@ word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
     ]
   ]
 ]
-word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
-[
-  [
-    0,
-    0.0,
-    0.0
-  ],
-  [
-    [
-      "groonga",
-      2.0
-    ],
-    [
-      [
-        "fulltextsearch",
-        0.183403044939041
-      ],
-      [
-        "</s>",
-        0.0981750339269638
-      ],
-      [
-        "mysql",
-        -0.038426760584116
-      ],
-      [
-        "rroonga",
-        -0.041764497756958
-      ],
-      [
-        "postgresql",
-        -0.0477972477674484
-      ],
-      [
-        "database",
-        -0.128371581435204
-      ]
-    ]
-  ]
-]
 word2vec_distance "Library" --file_path "db/db2_w2v.bin"
 [
   [
@@ -169,6 +129,38 @@ word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
       ],
       [
         "database",
+        -0.128371581435204
+      ]
+    ]
+  ]
+]
+word2vec_distance "Library" --file_path "db/db2_w2v.bin"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "library",
+      2.0
+    ],
+    [
+      [
+        "fulltextsearch",
+        0.183403044939041
+      ],
+      [
+        "</s>",
+        0.0981750339269638
+      ],
+      [
+        "database",
+        -0.041764497756958
+      ],
+      [
+        "server",
         -0.128371581435204
       ]
     ]
