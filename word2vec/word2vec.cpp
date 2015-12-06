@@ -1706,6 +1706,7 @@ static grn_bool
 column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *table_name, int table_len,
                      const char *column_names,
+                     char *filter,
                      train_option option)
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
@@ -1715,6 +1716,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     int i, t, array_len;
     grn_obj *columns[20];
     grn_table_cursor *cur;
+    grn_obj *result = NULL;
 
     /* parse column option */
     array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
@@ -1743,9 +1745,36 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
     }
 
-    /* output and filter column to vector */
-    if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
-                                     GRN_CURSOR_BY_ID))) {
+    /* select by script */
+    if (filter) {
+      grn_obj *v, *cond;
+
+      GRN_EXPR_CREATE_FOR_QUERY(ctx, table, cond, v);
+      grn_expr_parse(ctx, cond,
+                     filter,
+                     strlen(filter),
+                     NULL,
+                     GRN_OP_MATCH,
+                     GRN_OP_AND,
+                     GRN_EXPR_SYNTAX_SCRIPT);
+
+      result = grn_table_create(ctx, NULL, 0, NULL,
+                                GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
+                                table, NULL);
+      if (result) {
+        grn_table_select(ctx, table, cond, result, GRN_OP_OR);
+      }
+    }
+    if (result) {
+      cur = grn_table_cursor_open(ctx, result, NULL, 0, NULL, 0, 0, -1,
+                                  GRN_CURSOR_BY_ID);
+    } else {
+      cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
+                                  GRN_CURSOR_BY_ID);
+    }
+
+    /* output and filter column */
+    if (cur) {
       grn_id id;
       grn_obj column_value, get_buf, out_buf;
       grn_obj vbuf;
@@ -1832,6 +1861,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       grn_obj_unlink(ctx, &out_buf);
       grn_obj_unlink(ctx, &vbuf);
       grn_table_cursor_close(ctx, cur);
+      if (result) {
+        grn_obj_unlink(ctx, result);
+        result = NULL;
+      }
     }
     grn_obj_unlink(ctx, table);
     table = NULL;
@@ -1851,6 +1884,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   char *table_name = NULL;
   unsigned int table_len = 0;
   char *column_names = NULL;
+  char *filter = NULL;
   char *normalizer_name = (char *)"NormalizerAuto";
   unsigned int normalizer_len = 14;
   char *input_filter = NULL;
@@ -1869,6 +1903,11 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   if (GRN_TEXT_LEN(var) != 0) {
     column_names = GRN_TEXT_VALUE(var);
     column_names[GRN_TEXT_LEN(var)] = '\0';
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "filter", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    filter = GRN_TEXT_VALUE(var);
+    filter[GRN_TEXT_LEN(var)] = '\0';
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "normalizer", -1);
@@ -2007,6 +2046,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     if(column_to_train_file(ctx, train_file,
                             table_name, table_len,
                             column_names,
+                            filter,
                             option) == GRN_TRUE)
      {
         printf("Dump column to train file %s\n", train_file);
@@ -2116,7 +2156,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[26];
+  grn_expr_var vars[27];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
@@ -2139,31 +2179,32 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "train_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[3], "output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
-  grn_plugin_expr_var_init(ctx, &vars[5], "input_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "input_add_prefix", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "input_add_prefix_second", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "is_output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "save_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "read_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "debug", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "cbow", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "window", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "sample", -1);
-  grn_plugin_expr_var_init(ctx, &vars[20], "hs", -1);
-  grn_plugin_expr_var_init(ctx, &vars[21], "negative", -1);
-  grn_plugin_expr_var_init(ctx, &vars[22], "iter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[23], "min_count", -1);
-  grn_plugin_expr_var_init(ctx, &vars[24], "classes", -1);
-  grn_plugin_expr_var_init(ctx, &vars[25], "sentence_vectors", -1);
-  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 26, vars);
+  grn_plugin_expr_var_init(ctx, &vars[2], "filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "train_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "normalizer", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "input_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "input_add_prefix", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "input_add_prefix_second", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "is_output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "save_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "read_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "debug", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "cbow", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "window", -1);
+  grn_plugin_expr_var_init(ctx, &vars[20], "sample", -1);
+  grn_plugin_expr_var_init(ctx, &vars[21], "hs", -1);
+  grn_plugin_expr_var_init(ctx, &vars[22], "negative", -1);
+  grn_plugin_expr_var_init(ctx, &vars[23], "iter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[24], "min_count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[25], "classes", -1);
+  grn_plugin_expr_var_init(ctx, &vars[26], "sentence_vectors", -1);
+  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 27, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,
