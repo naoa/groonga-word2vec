@@ -68,7 +68,7 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define NELEMS(a) (sizeof(a) / sizeof(a[0]))
 
 #define DEFAULT_SORTBY          "_score"
-#define DEFAULT_OUTPUT_COLUMNS  "_key,_score"
+#define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
 typedef struct {
   double score;
@@ -89,7 +89,7 @@ typedef struct {
 } train_option;
 
 static void
-add_record(grn_ctx *ctx, grn_obj *res, char *word, int word_length, double score) {
+add_record(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score) {
   void *value;
   if (grn_hash_add(ctx, (grn_hash *)res, word, word_length, &value, NULL)) {
     grn_rset_recinfo *ri;
@@ -99,15 +99,23 @@ add_record(grn_ctx *ctx, grn_obj *res, char *word, int word_length, double score
 }
 
 static void
-output(grn_ctx *ctx, grn_obj *res, int offset, int limit, const char *sortby_val, unsigned int sortby_len)
+add_doc_id(grn_ctx *ctx, grn_obj *res, grn_id doc_id, double score) {
+  void *value;
+  if (grn_hash_add(ctx, (grn_hash *)res, &doc_id, sizeof(grn_id), &value, NULL)) {
+    grn_rset_recinfo *ri;
+    ri = (grn_rset_recinfo *)value;
+    ri->score = score;
+  }
+}
+
+static void
+output(grn_ctx *ctx, grn_obj *res, int offset, int limit, const char *oc_val, unsigned int oc_len, const char *sortby_val, unsigned int sortby_len)
 {
   grn_obj *sorted;
   if ((sorted = grn_table_create(ctx, NULL, 0, NULL, GRN_OBJ_TABLE_NO_KEY, NULL, res))) {
     uint32_t nkeys;
     grn_obj_format format;
     grn_table_sort_key *keys;
-    const char *oc_val;
-    unsigned int oc_len;
     if (!sortby_val || !sortby_len) {
       sortby_val = DEFAULT_SORTBY;
       sortby_len = sizeof(DEFAULT_SORTBY) - 1;
@@ -561,11 +569,20 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   int expander_mode = 0;
   grn_bool is_phrase = GRN_FALSE;
   grn_bool is_sentence_vectors = GRN_FALSE;
+  char *table_name = NULL;
+  unsigned int table_len = 0;
+  char *column_names = NULL;
+  unsigned int column_names_len = 0;
+  char *sortby = NULL;
+  unsigned int sortby_len = 0;
 
   long long st_pos = 0;
 
   char file_name[max_size];
   int model_index = 0;
+
+  grn_obj *table = NULL;
+  grn_obj *res = NULL;
 
   for (a = 0; a < N; a++) bestd[a] = -1;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
@@ -583,7 +600,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     strcpy(file_name, GRN_TEXT_VALUE(var));
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
-
   model_index = get_model_index(ctx, file_name);
   if (M[model_index] == NULL || load_vocab[model_index] == NULL) {
     if (word2vec_load(ctx, file_name, model_index) == GRN_FALSE) {
@@ -647,6 +663,21 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     is_sentence_vectors = atoi(GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "table", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    table_name = GRN_TEXT_VALUE(var);
+    table_len = GRN_TEXT_LEN(var);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "column", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    column_names = GRN_TEXT_VALUE(var);
+    column_names_len = GRN_TEXT_LEN(var);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "sortby", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    sortby = GRN_TEXT_VALUE(var);
+    sortby_len = GRN_TEXT_LEN(var);
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "term", -1);
@@ -770,6 +801,15 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
+  if (is_sentence_vectors) {
+    grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
+    if (table) {
+      res = grn_table_create(ctx, NULL, 0, NULL,
+                                  GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
+                                  table, NULL);
+    }
+  }
+
   len = 0;
   for (a = 0; a < size[model_index]; a++) len += vec[a] * vec[a];
   len = sqrt(len);
@@ -815,6 +855,17 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         }
         bestd[a] = dist;
         strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
+        if (is_sentence_vectors && res) {
+          char *doc_id;
+          doc_id = bestw[a];
+          /* forward to "doc_id:" */
+          for (int r = 0; r < 7; r++) {
+            doc_id++;
+          }
+          if (atoi(doc_id)) {
+            add_doc_id(ctx, res, atoi(doc_id),  bestd[a]);
+          }
+        }
         break;
       }
     }
@@ -883,31 +934,43 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_obj_unlink(ctx, &buf);
   }
   else {
-    grn_ctx_output_array_open(ctx, "RESULT", 2);
-    grn_ctx_output_array_open(ctx, "INPUT_WORD", 2);
-    grn_ctx_output_cstr(ctx, st1);
-    grn_ctx_output_float(ctx, st_pos);
-    grn_ctx_output_array_close(ctx);
-    grn_ctx_output_array_open(ctx, "SIMILAR_WORDS", N);
-    for (a = offset; a < max; a++) {
-      if (output_filter != NULL) {
-        string s = bestw[a];
-        re2::RE2::GlobalReplace(&s, output_filter, "");
-        strcpy(bestw[a],s.c_str());
-      }
-      if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-        grn_ctx_output_array_open(ctx, "SIMILAR_WORD", 2);
-        grn_ctx_output_cstr(ctx, bestw[a]);
-        grn_ctx_output_float(ctx, bestd[a]);
-        grn_ctx_output_array_close(ctx);
-      } else {
-        if (max < N) {
-          max++;
+    if (is_sentence_vectors && res) {
+      output(ctx, res, 0, -1, column_names, column_names_len, sortby, sortby_len);
+    } else {
+      grn_ctx_output_array_open(ctx, "RESULT", 2);
+      grn_ctx_output_array_open(ctx, "INPUT_WORD", 2);
+      grn_ctx_output_cstr(ctx, st1);
+      grn_ctx_output_float(ctx, st_pos);
+      grn_ctx_output_array_close(ctx);
+      grn_ctx_output_array_open(ctx, "SIMILAR_WORDS", N);
+      for (a = offset; a < max; a++) {
+        if (output_filter != NULL) {
+          string s = bestw[a];
+          re2::RE2::GlobalReplace(&s, output_filter, "");
+          strcpy(bestw[a],s.c_str());
+        }
+        if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
+          grn_ctx_output_array_open(ctx, "SIMILAR_WORD", 2);
+          grn_ctx_output_cstr(ctx, bestw[a]);
+          grn_ctx_output_float(ctx, bestd[a]);
+          grn_ctx_output_array_close(ctx);
+        } else {
+          if (max < N) {
+            max++;
+          }
         }
       }
+      grn_ctx_output_array_close(ctx);
+      grn_ctx_output_array_close(ctx);
     }
-    grn_ctx_output_array_close(ctx);
-    grn_ctx_output_array_close(ctx);
+  }
+  if (res) {
+    grn_obj_close(ctx, res);
+    res = NULL;
+  }
+  if (table) {
+    grn_obj_close(ctx, table);
+    table = NULL;
   }
 
   return NULL;
@@ -1604,7 +1667,7 @@ static void SaveKmeansClasses(grn_ctx *ctx, grn_bool is_output_file) {
         add_record(ctx, res, vocab[a].word, strlen(vocab[a].word), cl[a]);
       }
     }
-    output(ctx, res, 0, -1, "-_score", strlen("-_score"));
+    output(ctx, res, 0, -1, "_key,_score", strlen("_key,_score"), "-_score", strlen("-_score"));
     grn_obj_close(ctx, res);
   }
   free(centcn);
@@ -2164,7 +2227,10 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
   grn_plugin_expr_var_init(ctx, &vars[11], "is_phrase", -1);
   grn_plugin_expr_var_init(ctx, &vars[12], "sentence_vectors", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 13, vars);
+  grn_plugin_expr_var_init(ctx, &vars[13], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 16, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

@@ -24,7 +24,6 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
 | input_add_prefix   | 1カラム目の出力の先頭に追加したい文字列 | NULL |
 | input_add_prefix_second   | 2カラム目の出力の先頭に追加したい文字列 | NULL |
-| is_output_file   | classes>=1でk-meansの出力結果をファイルとする場合1 | 0 |
 | mecab_option   | MeCabのオプション Mecab使わない場合NONE | -Owakati |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
@@ -41,6 +40,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | iter    | 学習回数 | 5 |
 | min_count    | 単語の最低出現数 | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数 | 0 |
+| is_output_file   | classes>=1でk-meansの出力結果をファイルとする場合1 | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
@@ -74,7 +74,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
   ],
   [
     [
-      9
+      6
     ],
     [
       [
@@ -91,10 +91,6 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
       2
     ],
     [
-      "library",
-      2
-    ],
-    [
       "database",
       2
     ],
@@ -103,19 +99,11 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
       1
     ],
     [
-      "rroonga",
+      "mroonga",
       1
     ],
     [
       "fulltextsearch",
-      1
-    ],
-    [
-      "</s>",
-      0
-    ],
-    [
-      "server",
       0
     ],
     [
@@ -192,6 +180,9 @@ JSON (true)
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
+| table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
+| column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  カラムを出力する場合、最終の_scoreは0になる | _id,_score |
+| sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | _score |
 
 * 出力形式  
 JSON
