@@ -113,49 +113,6 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
   ]
 ```
 
-
-### word2vec_load
-
-学習済みモデルファイルをロードします。  
-
-ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.bin`がロードされます。  
-
-モデルファイルのサイズにより、ロードは、数秒以上かかることがあります。  
-Groongaのデータベースを閉じると、自動的にアンロードされます。  
-
-* 入力形式
-
-| arg        | description | default      |
-|:-----------|:------------|:-------------|
-| file_path  | 学習済みモデルファイル(バイナリ形式) | `{Groongaのデータベースパス}+_w2v.bin` |
-
-* 出力形式  
-JSON (true or false)
-
-* 実行例
-
-```
-> word2vec_load /var/lib/groonga/db_w2v.bin
-[[0,1403598361.75615,4.22779297828674],true]
-```
-
-### word2vec_unload
-
-ロードしたモデルファイルをアンロードします。
-
-* 入力形式
-なし
-
-* 出力形式  
-JSON (true)
-
-* 実行例
-
-```
-> word2vec_unload
-[[0,1403598416.39013,0.00282812118530273],true]
-```
-
 ### word2vec_distance
 
 入力した単語とベクトル距離が近い単語が出力されます。類似語らしきものを取得することができます。  
@@ -226,7 +183,7 @@ sentence vectorの例
 
 ```
 word2vec_train Entries title,tag,tags --min_count 1 --cbow 1 --sentence_vectors 1
-word2vec_distance "doc_id:2" --sentence_vectors 1
+word2vec_distance "doc_id:2" --sentence_vectors 1 --table Entries --column _id,title,tag
 [
   [
     0,
@@ -235,18 +192,31 @@ word2vec_distance "doc_id:2" --sentence_vectors 1
   ],
   [
     [
-      "doc_id:2",
-      10.0
+      2
     ],
     [
       [
-        "doc_id:3",
-        0.144293367862701
+        "_id",
+        "UInt32"
       ],
       [
-        "doc_id:1",
-        0.0506224483251572
+        "title",
+        "ShortText"
+      ],
+      [
+        "tag",
+        "Tags"
       ]
+    ],
+    [
+      3,
+      "Database",
+      "Server"
+    ],
+    [
+      1,
+      "FulltextSearch",
+      "Library"
     ]
   ]
 ]
@@ -272,6 +242,48 @@ word2vec_distanceを使って動的にクエリ展開をします。
 
 * 参考  
 [query_expander](https://github.com/groonga/groonga/blob/master/plugins/query_expanders/tsv.c)
+
+### word2vec_load
+
+学習済みモデルファイルをロードします。
+
+ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.bin`がロードされま>す。
+
+モデルファイルのサイズにより、ロードは、数秒以上かかることがあります。
+Groongaのデータベースを閉じると、自動的にアンロードされます。
+
+* 入力形式
+
+| arg        | description | default      |
+|:-----------|:------------|:-------------|
+| file_path  | 学習済みモデルファイル(バイナリ形式) | `{Groongaのデータベースパス}+_w2v.bin` |
+
+* 出力形式
+JSON (true or false)
+
+* 実行例
+
+```
+> word2vec_load /var/lib/groonga/db_w2v.bin
+[[0,1403598361.75615,4.22779297828674],true]
+```
+
+### word2vec_unload
+
+ロードしたモデルファイルをアンロードします。
+
+* 入力形式
+なし
+
+* 出力形式
+JSON (true)
+
+* 実行例
+
+```
+> word2vec_unload
+[[0,1403598416.39013,0.00282812118530273],true]
+```
 
 
 ## インストール
