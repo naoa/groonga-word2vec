@@ -941,15 +941,21 @@ static void DestroyVocab() {
   for (a = 0; a < vocab_size; a++) {
     if (vocab[a].word != NULL) {
       free(vocab[a].word);
+      vocab[a].word = NULL;
     }
     if (vocab[a].code != NULL) {
       free(vocab[a].code);
+      vocab[a].code = NULL;
     }
     if (vocab[a].point != NULL) {
       free(vocab[a].point);
+      vocab[a].point = NULL;
     }
   }
-  free(vocab[vocab_size].word);
+  if (vocab[vocab_size].word != NULL) {
+    free(vocab[vocab_size].word);
+    vocab[vocab_size].word = NULL;
+  }
   free(vocab);
 }
 
@@ -967,6 +973,7 @@ static void SortVocab() {
     if ((vocab[a].cn < min_count) && (a != 0)) {
       vocab_size--;
       free(vocab[a].word);
+      vocab[a].word = NULL;
     } else {
       // Hash will be re-computed, as after the sorting it is not actual
       hash=GetWordHash(vocab[a].word);
@@ -987,11 +994,16 @@ static void SortVocab() {
 static void ReduceVocab() {
   int a, b = 0;
   unsigned int hash;
-  for (a = 0; a < vocab_size; a++) if (vocab[a].cn > min_reduce) {
-    vocab[b].cn = vocab[a].cn;
-    vocab[b].word = vocab[a].word;
-    b++;
-  } else free(vocab[a].word);
+  for (a = 0; a < vocab_size; a++) {
+    if (vocab[a].cn > min_reduce) {
+      vocab[b].cn = vocab[a].cn;
+      vocab[b].word = vocab[a].word;
+      b++;
+    } else {
+      free(vocab[a].word);
+      vocab[a].word = NULL;
+    }
+  }
   vocab_size = b;
   for (a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1;
   for (a = 0; a < vocab_size; a++) {
