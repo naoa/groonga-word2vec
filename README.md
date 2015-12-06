@@ -7,9 +7,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 
 カラムからの出力に対してMeCabで分かち書きをし、Groongaのノーマライザ―を使って文字の正規化、およびRE2ライブラリを使って正規表現フィルタをかけることができます。正規表現フィルタは、エスケープの扱いに注意が必要です。たとえば、<>のタグと数字と半角記号を除去する場合は`--input_filter "(<[^>]*>)|([\\W_])"` 
 
-学習用ファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.txt`に出力されます。  
-
-現状カラムからの出力は一度かならずテキストファイル化されます。
+学習用ファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.txt`に出力されます。現状カラムからの出力は一度かならずテキストファイル化されます。
 
 学習済みモデルファイル名が省略された場合、学習済みモデルファイルが`{Groongaのデータベースパス}+_w2v.bin`に出力されます。
 
@@ -18,29 +16,29 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column      | Groongaのカラム名  ``,``区切りで複数指定可。  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する。  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する | NULL | 
+| column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する | NULL | 
 | train_file     | 学習用テキストファイル |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
-| input_add_prefix   | 入力テキストの先頭に追加したい文字列(１カラム目のみ) | NULL |
-| input_add_prefix_second   | 入力テキストの先頭に追加したい文字列(2カラム目のみ) | NULL |
-| mecab_option   | MeCabのオプション,Mecab使わない場合NONE | -Owakati |
+| input_add_prefix   | 1カラム目の出力の先頭に追加したい文字列 | NULL |
+| input_add_prefix_second   | 2カラム目の出力の先頭に追加したい文字列 | NULL |
+| mecab_option   | MeCabのオプション Mecab使わない場合NONE | -Owakati |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
-| threads    | threads | 12 |
-| size     |  layer1_size 次元数 | 100 |
+| threads    | 学習時のスレッド数 | 12 |
+| size     |  次元数 | 100 |
 | debug    | debug | 2 |
-| binary    | binary モデルファイルをテキスト形式にする場合は0  現状、word2vec_distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
-| cbow    | cbow skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
+| binary    | モデルファイルをテキスト形式にする場合は0  distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
+| cbow    | skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
-| window    | window 文脈とする前後の幅 | 5 |
-| sample    | sample | 1e-3 | 
-| hs    | hs 階層的Softmax(高速化手法) | 0 |
-| negative    | negative ネガティブサンプリングの単語数(高速化手法) | 5 |
-| iter    | iter | 5 学習回数 |
-| min_count    | min_count 単語の最低出現数 | 5 |
-| classes    | classes K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
+| window    | 文脈とする前後の幅 | 5 |
+| sample    |  高頻度の単語を無視する閾値 | 1e-3 | 
+| hs    | 階層的Softmax(高速化手法) | 0 |
+| negative    | ネガティブサンプリングの単語数(高速化手法) | 5 |
+| iter    | 学習回数 | 5 |
+| min_count    | 単語の最低出現数 | 5 |
+| classes    | K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1 | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
