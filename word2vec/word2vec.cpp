@@ -76,6 +76,15 @@ typedef struct {
   int subrecs[1];
 } grn_rset_recinfo;
 
+typedef struct {
+  char *input_filter;
+  grn_obj *input_add_prefix;
+  grn_obj *input_add_prefix_second;
+  char *mecab_option;
+  grn_bool is_phrase[20];
+  grn_bool is_mecab[20];
+  int weights[20];
+} train_option;
 
 static void
 add_record(grn_ctx *ctx, grn_obj *res, char *word, int word_length, double score) {
@@ -283,6 +292,60 @@ sparse(grn_ctx *ctx, const char *string, char *mecab_option)
     return NULL;
   }
   return parsed;
+}
+
+static grn_bool
+filter_and_add_vector_element(grn_ctx *ctx,
+                              grn_obj *vbuf,
+                              int i,
+                              const char **column_value_p,
+                              grn_obj *out_buf,
+                              train_option option)
+{
+  if (option.input_filter != NULL || option.is_phrase[i]) {
+    string s = *column_value_p;
+    if (option.input_filter != NULL) {
+      re2::RE2::GlobalReplace(&s, option.input_filter, " ");
+      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+    }
+    if (option.is_phrase[i]) {
+      re2::RE2::GlobalReplace(&s, " ", "_");
+    }
+    *column_value_p = s.c_str();
+  }
+  right_trim((char *)*column_value_p, '\n');
+  right_trim((char *)*column_value_p, ' ');
+
+  if (option.mecab_option != NULL && option.is_mecab[i] &&
+      strlen(*column_value_p) > 0){
+    *column_value_p = sparse(ctx, *column_value_p, option.mecab_option);
+    right_trim((char *)*column_value_p, '\n');
+    right_trim((char *)*column_value_p, ' ');
+  }
+
+  if (strlen(*column_value_p) == 0){
+    return GRN_FALSE;
+  }
+  else {
+    GRN_BULK_REWIND(out_buf);
+    if (i == 0 && option.input_add_prefix) {
+      GRN_TEXT_PUT(ctx, out_buf,
+                   GRN_TEXT_VALUE(option.input_add_prefix),
+                   GRN_TEXT_LEN(option.input_add_prefix));
+    } else if (i == 1 && option.input_add_prefix_second) {
+      GRN_TEXT_PUT(ctx, out_buf,
+                   GRN_TEXT_VALUE(option.input_add_prefix_second),
+                   GRN_TEXT_LEN(option.input_add_prefix_second));
+    }
+    GRN_TEXT_PUTS(ctx, out_buf, *column_value_p);
+    for (int w = 0; w < option.weights[i]; w++) {
+      grn_vector_add_element(ctx, vbuf,
+                             GRN_TEXT_VALUE(out_buf),
+                             GRN_TEXT_LEN(out_buf),
+                             0, GRN_DB_TEXT);
+    }
+    return GRN_TRUE;
+  }
 }
 
 static const char *
@@ -1633,19 +1696,13 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *table_name, int table_len,
                      const char *column_names,
                      char *normalizer_name, int normalizer_len,
-                     char *input_filter,
-                     grn_obj *input_add_prefix,
-                     grn_obj *input_add_prefix_second,
-                     char *mecab_option)
+                     train_option option)
 {
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
   if (table) {
     FILE *fo = fopen(train_file, "wb");
     char *column_name_array[20];
-    grn_bool is_phrase[20];
-    grn_bool is_mecab[20];
     int i, t, array_len;
-    int weights[20];
     grn_obj *columns[20];
     grn_table_cursor *cur;
 
@@ -1655,28 +1712,28 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       if (column_name_array[i][strlen(column_name_array[i]) - 2] == '*' &&
           column_name_array[i][strlen(column_name_array[i]) - 1] >= '2' &&
           column_name_array[i][strlen(column_name_array[i]) - 1] <= '9') {
-        weights[i] = (int)(column_name_array[i][strlen(column_name_array[i]) - 1]) - (int)('0');
+        option.weights[i] = (int)(column_name_array[i][strlen(column_name_array[i]) - 1]) - (int)('0');
         right_trim(column_name_array[i], column_name_array[i][strlen(column_name_array[i]) - 1]);
         right_trim(column_name_array[i], column_name_array[i][strlen(column_name_array[i]) - 1]);
       } else {
-        weights[i] = 1;
+        option.weights[i] = 1;
       }
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == '_') {
-        is_phrase[i] = GRN_TRUE;
+        option.is_phrase[i] = GRN_TRUE;
         right_trim(column_name_array[i], '_');
       } else {
-        is_phrase[i] = GRN_FALSE;
+        option.is_phrase[i] = GRN_FALSE;
       }
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == '/') {
-        is_mecab[i] = GRN_TRUE;
+        option.is_mecab[i] = GRN_TRUE;
         right_trim(column_name_array[i], '/');
       } else {
-        is_mecab[i] = GRN_FALSE;
+        option.is_mecab[i] = GRN_FALSE;
       }
       columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
     }
 
-    /* output and filter column */
+    /* output and filter column to vector */
     if ((cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
                                      GRN_CURSOR_BY_ID))) {
       grn_id id;
@@ -1702,6 +1759,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             GRN_RECORD_INIT(&record, 0, ((&column_value))->header.domain);
             GRN_BULK_REWIND(&get_buf);
             n = grn_vector_size(ctx, &column_value);
+            /* is_skip should be removed after implement search */
             if (i == 0 && n == 0) {
               is_skip = GRN_TRUE;
             }
@@ -1712,32 +1770,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                                            normalizer_name, normalizer_len,
                                            &get_buf);
               }
-
-              if (input_filter != NULL || is_phrase[i]) {
-                string s = column_value_p;
-                if (input_filter != NULL) {
-                  re2::RE2::GlobalReplace(&s, input_filter, " ");
-                  re2::RE2::GlobalReplace(&s, "[ ]+", " ");
-                }
-                if (is_phrase[i]) {
-                  re2::RE2::GlobalReplace(&s, " ", "_");
-                }
-                column_value_p = s.c_str();
-              }
-
-              if (strlen(column_value_p) > 0){
-                GRN_BULK_REWIND(&out_buf);
-                if (i == 0 && input_add_prefix) {
-                  GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
-                } else if (i == 1 && input_add_prefix_second) {
-                  GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
-                }
-                GRN_TEXT_PUTS(ctx, &out_buf, column_value_p);
-                for (int w = 0; w < weights[i]; w++) {
-                  grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&out_buf), GRN_TEXT_LEN(&out_buf), 0, GRN_DB_TEXT);
-                }
-              }
-            }
+              filter_and_add_vector_element(ctx, &vbuf, i,
+                                            &column_value_p, &out_buf,
+                                            option);
+           }
             GRN_OBJ_FIN(ctx, &record);
           } else {
             /* Todo: support vector column */
@@ -1757,42 +1793,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               GRN_TEXT_PUTC(ctx, &get_buf, '\0');
               column_value_p = GRN_TEXT_VALUE(&get_buf);
             }
-
-            if (input_filter != NULL || is_phrase[i]) {
-              string s = column_value_p;
-              if (input_filter != NULL) {
-                re2::RE2::GlobalReplace(&s, input_filter, " ");
-                re2::RE2::GlobalReplace(&s, "[ ]+", " ");
-              }
-              if (is_phrase[i]) {
-                re2::RE2::GlobalReplace(&s, " ", "_");
-              }
-              column_value_p = s.c_str();
-            }
-            right_trim((char *)column_value_p, '\n');
-            right_trim((char *)column_value_p, ' ');
-
-            if (mecab_option != NULL && is_mecab[i] && strlen(column_value_p) > 0){
-              column_value_p = sparse(ctx, column_value_p, mecab_option);
-              right_trim((char *)column_value_p, '\n');
-              right_trim((char *)column_value_p, ' ');
-            }
-            if (strlen(column_value_p) > 0){
-              GRN_BULK_REWIND(&out_buf);
-              if (i == 0 && input_add_prefix) {
-                GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix), GRN_TEXT_LEN(input_add_prefix));
-              } else if (i == 1 && input_add_prefix_second) {
-                GRN_TEXT_PUT(ctx, &out_buf, GRN_TEXT_VALUE(input_add_prefix_second), GRN_TEXT_LEN(input_add_prefix_second));
-              }
-              GRN_TEXT_PUTS(ctx, &out_buf, column_value_p);
-              for (int w = 0; w < weights[i]; w++) {
-                grn_vector_add_element(ctx, &vbuf, GRN_TEXT_VALUE(&out_buf), GRN_TEXT_LEN(&out_buf), 0, GRN_DB_TEXT);
-              }
-            } else {
-              if (i == 0) {
-                is_skip = GRN_TRUE;
-              }
-            }
+            /* is_skip should be removed after implement search */
+            is_skip = (!filter_and_add_vector_element(ctx, &vbuf, i,
+                                                      &column_value_p, &out_buf,
+                                                      option) && i == 0);
           }
         }
         if (!is_skip) {
@@ -1989,11 +1993,16 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   }
 
   if(table_name != NULL && column_names != NULL) {
+    train_option option;
+    option.input_filter = input_filter;
+    option.input_add_prefix = input_add_prefix;
+    option.input_add_prefix_second = input_add_prefix_second;
+    option.mecab_option = mecab_option;
     if(column_to_train_file(ctx, train_file,
                             table_name, table_len,
                             column_names,
                             normalizer_name, normalizer_len,
-                            input_filter, input_add_prefix, input_add_prefix_second, mecab_option) == GRN_TRUE)
+                            option) == GRN_TRUE)
      {
         printf("Dump column to train file %s\n", train_file);
      } else {
