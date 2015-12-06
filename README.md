@@ -8,7 +8,10 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 カラムからの出力に対してMeCabで分かち書きをし、Groongaのノーマライザ―を使って文字の正規化、およびRE2ライブラリを使って正規表現フィルタをかけることができます。正規表現フィルタは、エスケープの扱いに注意が必要です。たとえば、<>のタグと数字と半角記号を除去する場合は`--input_filter "(<[^>]*>)|([\\W_])"` 
 
 学習用ファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.txt`に出力されます。  
-学習済みモデルファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.bin`に出力されます。
+
+現状カラムからの出力は一度かならずテキストファイル化されます。
+
+学習済みモデルファイル名が省略された場合、学習済みモデルファイルが`{Groongaのデータベースパス}+_w2v.bin`に出力されます。
 
 * 入力形式
 
@@ -26,18 +29,18 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
 | threads    | threads | 12 |
-| size     |  layer1_size | 100 |
+| size     |  layer1_size 次元数 | 100 |
 | debug    | debug | 2 |
-| binary    | binary | 1 |
-| cbow    | cbow skip-gramを使う場合は0 | 1 |
+| binary    | binary モデルファイルをテキスト形式にする場合は0  現状、word2vec_distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
+| cbow    | cbow skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
-| window    | window | 5 |
+| window    | window 文脈とする前後の幅 | 5 |
 | sample    | sample | 1e-3 | 
-| hs    | hs | 0 |
-| negative    | negative | 5 |
-| iter    | iter | 5 |
-| min_count    | min_count | 5 |
-| classes    | classes | 0 |
+| hs    | hs 階層的Softmax(高速化手法) | 0 |
+| negative    | negative ネガティブサンプリングの単語数(高速化手法) | 5 |
+| iter    | iter | 5 学習回数 |
+| min_count    | min_count 単語の最低出現数 | 5 |
+| classes    | classes K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1 | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
