@@ -17,7 +17,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
 | column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する | NULL | 
-| train_file     | 学習用テキストファイル |  `{groonga_db}_w2v.txt` |
+| train_file     | 学習用テキストファイル(一時ファイル) |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
@@ -39,7 +39,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | iter    | 学習回数 | 5 |
 | min_count    | 単語の最低出現数 | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
-| sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルが追加される  (それ以外の単語ベクトルもある) | 0 |
+| sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
 上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  
