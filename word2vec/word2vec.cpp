@@ -997,7 +997,7 @@ struct vocab_word {
 char train_file[MAX_STRING], output_file[MAX_STRING];
 char save_vocab_file[MAX_STRING], read_vocab_file[MAX_STRING];
 struct vocab_word *vocab;
-int binary = 1, cbow = 0, debug_mode = 2, window = 5, min_count = 5, num_threads = 12, min_reduce = 1;
+int binary = 1, cbow = 0, debug_mode = 0, window = 5, min_count = 5, num_threads = 12, min_reduce = 1;
 int *vocab_hash;
 long long vocab_max_size = 1000, vocab_size = 0, layer1_size = 100, sentence_vectors = 0;
 long long train_words = 0, word_count_actual = 0, iter = 5, file_size = 0, classes = 0;
@@ -1260,7 +1260,7 @@ static void LearnVocabFromTrainFile() {
   for (a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1;
   fin = fopen(train_file, "rb");
   if (fin == NULL) {
-    printf("ERROR: training data file not found!\n");
+    fprintf(stderr, "ERROR: training data file not found!\n");
     exit(1);
   }
   vocab_size = 0;
@@ -1302,7 +1302,7 @@ static void ReadVocab() {
   char word[MAX_STRING];
   FILE *fin = fopen(read_vocab_file, "rb");
   if (fin == NULL) {
-    printf("Vocabulary file not found\n");
+    fprintf(stderr, "Vocabulary file not found\n");
     exit(1);
   }
   for (a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1;
@@ -1321,7 +1321,7 @@ static void ReadVocab() {
   }
   fin = fopen(train_file, "rb");
   if (fin == NULL) {
-    printf("ERROR: training data file not found!\n");
+    fprintf(stderr, "ERROR: training data file not found!\n");
     exit(1);
   }
   fseek(fin, 0, SEEK_END);
@@ -1333,16 +1333,16 @@ static void InitNet() {
   long long a, b;
   unsigned long long next_random = 1;
   a = posix_memalign((void **)&syn0, 128, (long long)vocab_size * layer1_size * sizeof(real));
-  if (syn0 == NULL) {printf("Memory allocation failed\n"); exit(1);}
+  if (syn0 == NULL) {fprintf(stderr, "Memory allocation failed\n"); exit(1);}
   if (hs) {
     a = posix_memalign((void **)&syn1, 128, (long long)vocab_size * layer1_size * sizeof(real));
-    if (syn1 == NULL) {printf("Memory allocation failed\n"); exit(1);}
+    if (syn1 == NULL) {fprintf(stderr, "Memory allocation failed\n"); exit(1);}
     for (a = 0; a < vocab_size; a++) for (b = 0; b < layer1_size; b++)
      syn1[a * layer1_size + b] = 0;
   }
   if (negative>0) {
     a = posix_memalign((void **)&syn1neg, 128, (long long)vocab_size * layer1_size * sizeof(real));
-    if (syn1neg == NULL) {printf("Memory allocation failed\n"); exit(1);}
+    if (syn1neg == NULL) {fprintf(stderr, "Memory allocation failed\n"); exit(1);}
     for (a = 0; a < vocab_size; a++) for (b = 0; b < layer1_size; b++)
      syn1neg[a * layer1_size + b] = 0;
   }
@@ -1572,7 +1572,6 @@ static void TrainModel() {
     fprintf(stderr, "cannot allocate memory for threads\n");
     exit(1);
   }
-  printf("Starting training using file %s\n", train_file);
   starting_alpha = alpha;
   if (read_vocab_file[0] != 0) ReadVocab(); else LearnVocabFromTrainFile();
   if (save_vocab_file[0] != 0) SaveVocab();
@@ -1679,7 +1678,7 @@ static int ArgPos(char *str, int argc, char **argv) {
   int a;
   for (a = 1; a < argc; a++) if (!strcmp(str, argv[a])) {
     if (a == argc - 1) {
-      printf("Argument missing for %s\n", str);
+      fprintf(stderr, "Argument missing for %s\n", str);
       exit(1);
     }
     return a;
@@ -2097,13 +2096,14 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
     if(column_to_train_file(ctx, train_file,
                             table_name, table_len,
-                            column_names,
-                            filter,
+                            column_names, filter,
                             option) == GRN_TRUE)
      {
-        printf("Dump column to train file %s\n", train_file);
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_NOTICE,
+                       "[word2vec_train] Dump column to train file %s", train_file);
      } else {
-        printf("Dump column to train file %s failed.\n", train_file);
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                       "[word2vec_train] Dump column to train file %s failed.", train_file);
         return NULL;
      }
   }
@@ -2112,13 +2112,16 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   vocab_hash = (int *)calloc(vocab_hash_size, sizeof(int));
   expTable = (real *)malloc((EXP_TABLE_SIZE + 1) * sizeof(real));
   if (expTable == NULL) {
-    fprintf(stderr, "out of memory\n");
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_train] out of memory");
     return NULL;
   }
   for (int i = 0; i < EXP_TABLE_SIZE; i++) {
     expTable[i] = exp((i / (real)EXP_TABLE_SIZE * 2 - 1) * MAX_EXP); // Precompute the exp() table
     expTable[i] = expTable[i] / (expTable[i] + 1);                   // Precompute f(x) = x / (x + 1)
   }
+  GRN_PLUGIN_LOG(ctx, GRN_LOG_DEBUG,
+                 "[word2vec_train] Starting training using file %s",
+                 train_file);
   TrainModel();
   if (classes == 0) {
     SaveWordVectors();

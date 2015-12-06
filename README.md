@@ -29,7 +29,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | read_vovab_file    | read_vocab_file | NULL |
 | threads    | 学習時のスレッド数 | 12 |
 | size     |  次元数 | 100 |
-| debug    | debug | 2 |
+| debug    | debug | 0 |
 | binary    | モデルファイルをテキスト形式にする場合は0  distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
 | cbow    | skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
@@ -48,18 +48,17 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 たとえば、``word2vec_train --table Logs --column log``
 
 * 出力形式  
-JSON (true or false) 標準出力
+JSON (true or false)
 
-なお、現状、word2vecのデバッグ出力はそのまま標準出力されています。
+なお、word2vecのデバッグ出力は標準出力されます。 word2vecのエラーは標準エラー出力に出力されます。
 
 * 実行例
 
 ```
-> word2vec_train Logs log --input_filter "[0-9]"
-Dump column to train file /var/lib/groonga/db_w2v.txt
-Starting training using file /var/lib/groonga/db_w2v.txt
-Vocab size: 1
-Words in train file: 0
+> word2vec_train Logs log --debug 2
+Vocab size: 976190
+Words in train file: 219474851
+Alpha: 0.000100  Progress: 99.60%  Words/thread/sec: 7.07k
 ```
 
 k-meansクラスタリングの出力例
