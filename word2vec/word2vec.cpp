@@ -327,6 +327,7 @@ word2vec_load(grn_ctx *ctx, grn_user_data *user_data)
     get_model_file_path(ctx, file_name);
   } else {
     strcpy(file_name, GRN_TEXT_VALUE(var));
+    file_name[GRN_TEXT_LEN(var)] = '\0';
   }
 
   f = fopen(file_name, "rb");
@@ -1732,14 +1733,17 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   var = grn_plugin_proc_get_var(ctx, user_data, "train_file", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     strcpy(train_file, GRN_TEXT_VALUE(var));
+    train_file[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "save_vocab_file", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     strcpy(save_vocab_file, GRN_TEXT_VALUE(var));
+    save_vocab_file[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "read_vocab_file", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     strcpy(read_vocab_file, GRN_TEXT_VALUE(var));
+    read_vocab_file[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "debug", -1);
   if(GRN_TEXT_LEN(var) != 0) {
@@ -1761,6 +1765,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   var = grn_plugin_proc_get_var(ctx, user_data, "output_file", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     strcpy(output_file, GRN_TEXT_VALUE(var));
+    output_file[GRN_TEXT_LEN(var)] = '\0';
   } else {
     get_model_file_path(ctx, output_file);
   }
