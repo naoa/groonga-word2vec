@@ -1868,8 +1868,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
            }
             GRN_OBJ_FIN(ctx, &record);
           } else {
-            GRN_BULK_REWIND(&get_buf);
-
             /* vector column */
             if ((&(column_value))->header.type == GRN_VECTOR) {
               grn_obj record;
@@ -1897,6 +1895,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               if (is_record(ctx, &column_value)) {
                 column_value_p = get_reference_value(ctx, &column_value, &column_value);
               }
+              GRN_BULK_REWIND(&get_buf);
               GRN_TEXT_SET(ctx, &get_buf, GRN_TEXT_VALUE(&column_value), GRN_TEXT_LEN(&column_value));
               GRN_TEXT_PUTC(ctx, &get_buf, '\0');
               column_value_p = GRN_TEXT_VALUE(&get_buf);
