@@ -181,8 +181,8 @@ JSON (true)
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
-| column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  カラムを出力する場合、最終の_scoreは0になる | _id,_score |
-| sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | _score |
+| column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  カラムを出力する場合、最終の_scoreの見かけ上の表示は0になる | _id,_score |
+| sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_score |
 
 * 出力形式  
 JSON

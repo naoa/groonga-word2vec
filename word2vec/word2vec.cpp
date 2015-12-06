@@ -67,7 +67,7 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define SPLIT_BUF_SIZE 4096
 #define NELEMS(a) (sizeof(a) / sizeof(a[0]))
 
-#define DEFAULT_SORTBY          "_score"
+#define DEFAULT_SORTBY          "-_score"
 #define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
 typedef struct {
@@ -935,7 +935,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
   else {
     if (is_sentence_vectors && res) {
-      output(ctx, res, 0, -1, column_names, column_names_len, sortby, sortby_len);
+      output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
     } else {
       grn_ctx_output_array_open(ctx, "RESULT", 2);
       grn_ctx_output_array_open(ctx, "INPUT_WORD", 2);
