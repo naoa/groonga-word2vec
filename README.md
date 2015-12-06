@@ -39,7 +39,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | iter    | 学習回数 | 5 |
 | min_count    | 単語の最低出現数 | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数  現状、モデルファイルに出力されるだけ | 0 |
-| sentence_vectors   | sentence vectorを含める場合は1 | 0 |
+| sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルが追加される  (それ以外の単語ベクトルもある) | 0 |
 
 オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
 上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  
@@ -126,6 +126,7 @@ JSON (true)
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
+| sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 
 * 出力形式  
 JSON
@@ -159,6 +160,36 @@ JSON
       [
         "辞書",
         0.883183181285858
+      ]
+    ]
+  ]
+]
+```
+
+sentence vectorの例
+
+```
+word2vec_train Entries title,tag,tags --min_count 1 --cbow 1 --sentence_vectors 1
+word2vec_distance "doc_id:2" --sentence_vectors 1
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "doc_id:2",
+      10.0
+    ],
+    [
+      [
+        "doc_id:3",
+        0.144293367862701
+      ],
+      [
+        "doc_id:1",
+        0.0506224483251572
       ]
     ]
   ]

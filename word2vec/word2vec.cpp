@@ -453,6 +453,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char *mecab_option = NULL;
   int expander_mode = 0;
   grn_bool is_phrase = GRN_FALSE;
+  grn_bool is_sentence_vectors = GRN_FALSE;
 
   long long st_pos = 0;
 
@@ -535,6 +536,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "is_phrase", -1);
   if(GRN_TEXT_LEN(var) != 0) {
     is_phrase = atoi(GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
+  if(GRN_TEXT_LEN(var) != 0) {
+    is_sentence_vectors = atoi(GRN_TEXT_VALUE(var));
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "term", -1);
@@ -677,6 +682,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         if (threshold > 0 && dist < threshold) {
           break;
         }
+        if (is_sentence_vectors) {
+          if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
+            break;
+          }
+        }
         if (white_term_filter != NULL) {
           string s = &load_vocab[model_index][c * max_w];
           string t = white_term_filter;
@@ -691,7 +701,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
             break;
           }
         }
-        /* filter */
 
         for (d = N - 1; d > a; d--) {
           bestd[d] = bestd[d - 1];
@@ -1672,6 +1681,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           }
         }
         if (!is_skip) {
+          if (sentence_vectors) {
+            fprintf(fo, "doc_id:%d", id);
+            fprintf(fo, " ");
+          }
           for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
             const char *value;
             unsigned int length;
@@ -1977,7 +1990,8 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[9], "file_path", -1);
   grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
   grn_plugin_expr_var_init(ctx, &vars[11], "is_phrase", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 12, vars);
+  grn_plugin_expr_var_init(ctx, &vars[12], "sentence_vectors", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 13, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

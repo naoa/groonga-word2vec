@@ -1,0 +1,176 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],6]
+word2vec_train Entries title,tags --min_count 1 --output_file "db/db_w2v.bin"
+word2vec_train Entries title,tag --min_count 1 --output_file "db/db2_w2v.bin"
+word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "groonga",
+      2.0
+    ],
+    [
+      [
+        "fulltextsearch",
+        0.183403044939041
+      ],
+      [
+        "</s>",
+        0.0981750339269638
+      ],
+      [
+        "mysql",
+        -0.038426760584116
+      ],
+      [
+        "rroonga",
+        -0.041764497756958
+      ],
+      [
+        "postgresql",
+        -0.0477972477674484
+      ],
+      [
+        "database",
+        -0.128371581435204
+      ]
+    ]
+  ]
+]
+word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "groonga",
+      2.0
+    ],
+    [
+      [
+        "fulltextsearch",
+        0.183403044939041
+      ],
+      [
+        "</s>",
+        0.0981750339269638
+      ],
+      [
+        "mysql",
+        -0.038426760584116
+      ],
+      [
+        "rroonga",
+        -0.041764497756958
+      ],
+      [
+        "postgresql",
+        -0.0477972477674484
+      ],
+      [
+        "database",
+        -0.128371581435204
+      ]
+    ]
+  ]
+]
+word2vec_distance "Library" --file_path "db/db2_w2v.bin"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "library",
+      2.0
+    ],
+    [
+      [
+        "fulltextsearch",
+        0.183403044939041
+      ],
+      [
+        "</s>",
+        0.0981750339269638
+      ],
+      [
+        "database",
+        -0.041764497756958
+      ],
+      [
+        "server",
+        -0.128371581435204
+      ]
+    ]
+  ]
+]
+word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "groonga",
+      2.0
+    ],
+    [
+      [
+        "fulltextsearch",
+        0.183403044939041
+      ],
+      [
+        "</s>",
+        0.0981750339269638
+      ],
+      [
+        "mysql",
+        -0.038426760584116
+      ],
+      [
+        "rroonga",
+        -0.041764497756958
+      ],
+      [
+        "postgresql",
+        -0.0477972477674484
+      ],
+      [
+        "database",
+        -0.128371581435204
+      ]
+    ]
+  ]
+]
