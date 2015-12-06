@@ -222,27 +222,6 @@ word2vec_distance "doc_id:2" --sentence_vectors 1 --table Entries --column _id,t
 ]
 ```
 
-## 関数
-### QueryExpanderWord2vec
-word2vec_distanceを使って動的にクエリ展開をします。
-
-* 実行例
-
-```
->select --table test --match_columns text --query database --query_expander QueryExpanderWord2vec
-```
-
-* 設定値  
-以下を環境変数で変更可能です。
-
-| env        | description | default      |
-|:-----------|:------------|:-------------|
-| GRN_WORD2VEC_EXPANDER_LIMIT     | クエリ展開の上限件数 | 3 |
-| GRN_WORD2VEC_EXPANDER_THRESHOLD     | クエリ展開用ワードの閾値、1以下の小数を指定 | 0.75 |
-
-* 参考  
-[query_expander](https://github.com/groonga/groonga/blob/master/plugins/query_expanders/tsv.c)
-
 ### word2vec_load
 
 学習済みモデルファイルをロードします。
@@ -285,6 +264,26 @@ JSON (true)
 [[0,1403598416.39013,0.00282812118530273],true]
 ```
 
+## 関数
+### QueryExpanderWord2vec
+word2vec_distanceを使って動的にクエリ展開をします。
+
+* 実行例
+
+```
+>select --table test --match_columns text --query database --query_expander QueryExpanderWord2vec
+```
+
+* 設定値  
+以下を環境変数で変更可能です。
+
+| env        | description | default      |
+|:-----------|:------------|:-------------|
+| GRN_WORD2VEC_EXPANDER_LIMIT     | クエリ展開の上限件数 | 3 |
+| GRN_WORD2VEC_EXPANDER_THRESHOLD     | クエリ展開用ワードの閾値、1以下の小数を指定 | 0.75 |
+
+* 参考  
+[query_expander](https://github.com/groonga/groonga/blob/master/plugins/query_expanders/tsv.c)
 
 ## インストール
 本プラグインは、Groongaの4.0.3以降のバージョンが必要です。
