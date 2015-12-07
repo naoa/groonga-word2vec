@@ -1002,7 +1002,7 @@ real alpha = 0.025, starting_alpha, sample = 1e-3;
 real *syn0, *syn1, *syn1neg, *expTable;
 clock_t start;
 
-int hs = 0, negative = 5;
+int hs = 0, negative = 0;
 const int table_size = 1e8;
 int *table;
 

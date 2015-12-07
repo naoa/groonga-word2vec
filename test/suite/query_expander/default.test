@@ -44,6 +44,6 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 
-word2vec_train Entries title,tag,tags*9 --min_count 1 --cbow 0 --normalizer "NONE"
+word2vec_train Entries title,tag,tags*9 --min_count 1 --cbow 0 --normalizer "NONE" --negative 0 --hs 1
 select Entries --match_columns tags --query "MySQL" --sortby _id --limit 2 --query_expander QueryExpanderWord2vec
 
