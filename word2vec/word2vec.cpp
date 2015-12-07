@@ -2156,7 +2156,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   TrainModel();
   if (classes == 0) {
     SaveWordVectors();
-    //grn_ctx_output_bool(ctx, GRN_TRUE);
+    grn_ctx_output_bool(ctx, GRN_TRUE);
   } else {
     SaveKmeansClasses(ctx, is_output_file);
   }
