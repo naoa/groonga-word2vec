@@ -9,9 +9,9 @@ column_create Entries tags COLUMN_VECTOR Tags
 
 load --table Entries
 [
-{"title": "Fulltext Search", "tag": "Lib rary", "tags": ["<b>G'roon ga</b>", "Rroonga"]},
-{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+{"title": "今日は＊雨だ1\",.;:&^/-#'()なぁ", "tag": "Library"},
+{"title": "明日は<b>晴れ</b>だなぁ", "tag": "Server"}
 ]
 
-word2vec_train Entries title_,tag_,tags_$ --min_count 1
-word2vec_distance "fulltext_search"
+word2vec_train Entries title$,tag --min_count 1
+word2vec_distance "Server" --limit 40

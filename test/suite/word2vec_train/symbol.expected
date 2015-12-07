@@ -12,12 +12,12 @@ column_create Entries tags COLUMN_VECTOR Tags
 [[0,0.0,0.0],true]
 load --table Entries
 [
-{"title": "Fulltext Search", "tag": "Lib rary", "tags": ["<b>G'roon ga</b>", "Rroonga"]},
-{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+{"title": "今日は＊雨だ1\",.;:&^/-#'()なぁ", "tag": "Library"},
+{"title": "明日は<b>晴れ</b>だなぁ", "tag": "Server"}
 ]
 [[0,0.0,0.0],2]
-word2vec_train Entries title_,tag_,tags_$ --min_count 1
-word2vec_distance "fulltext_search"
+word2vec_train Entries title$,tag --min_count 1
+word2vec_distance "Server" --limit 40
 [
   [
     0,
@@ -26,41 +26,37 @@ word2vec_distance "fulltext_search"
   ],
   [
     [
-      "fulltext_search",
-      1.0
+      "server",
+      7.0
     ],
     [
       [
-        "lib_rary",
-        0.18340303003788
-      ],
-      [
-        "mysql",
-        0.0758075639605522
-      ],
-      [
-        "rroonga",
-        0.0564095415174961
-      ],
-      [
-        "_g_roon_ga_",
-        0.0368562042713165
-      ],
-      [
-        "server",
-        -0.000387371052056551
+        "なぁ",
+        0.236046344041824
       ],
       [
         "</s>",
-        -0.0632898360490799
+        0.121626138687134
       ],
       [
-        "database",
-        -0.13147459924221
+        "今日は*雨だ",
+        0.0758075639605522
       ],
       [
-        "postgresql",
-        -0.170803934335709
+        "だなぁ",
+        0.00604319386184216
+      ],
+      [
+        "明日は",
+        -0.0134698543697596
+      ],
+      [
+        "library",
+        -0.0158039312809706
+      ],
+      [
+        "晴れ",
+        -0.0652221590280533
       ]
     ]
   ]
