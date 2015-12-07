@@ -553,7 +553,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char st[100][max_size];
   float dist, len, bestd[N], vec[max_size];
   long long a, b, c, d, cn, bi[100];
-  char op[100];
+  char op[100] = {'+'};
   unsigned int max;
 
   grn_obj *var;
@@ -588,10 +588,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) bestw[a][0] = 0;
 
   st1[0] = 0;
-  for (unsigned int i = 0; i < 100; i++){
-    st[i][0] = 0;
-    op[i] = '+';
-  }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -1887,7 +1883,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                                               &column_value_p,
                                               &get_buf, &out_buf,
                                               option);
-
               }
               GRN_OBJ_FIN(ctx, &record);
             } else {
