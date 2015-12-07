@@ -384,7 +384,6 @@ normalize(grn_ctx *ctx, grn_obj *buf,
 /* distance.c */
 
 const long long max_size = 2000; // max length of strings
-const long long N = 40; // number of closest words that will be shown
 const long long max_w = 50; // max length of vocabulary entries
 
 #define MAX_MODEL 20
@@ -553,6 +552,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
                           grn_user_data *user_data)
 {
   char st1[max_size];
+  const long long N = 40; // number of closest words that will be shown
   char bestw[N][max_size];
   char *st[100];
   float dist, len, bestd[N], vec[max_size];
@@ -584,7 +584,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   grn_obj *table = NULL;
   grn_obj *res = NULL;
 
-  st1[0] = 0;
+  st1[0] = '\0';
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -693,6 +693,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     if (normalizer_len){
       term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
+      GRN_TEXT_PUTC(ctx, var, '\0');
       term = GRN_TEXT_VALUE(var);
     }
     right_trim((char *)term, '\n');
@@ -709,6 +710,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
     array_len = split(result_array, NELEMS(result_array), term, " ");
     for (unsigned int i = 0; i < array_len; i++) {
+      if (i == 0) {
+        strcpy(st1, result_array[i]);
+        continue;
+      }
       if (result_array[i][0] == '+'){
         op[op_row] = '+';
         op_row++;
