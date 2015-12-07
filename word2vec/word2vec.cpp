@@ -346,7 +346,7 @@ normalize(grn_ctx *ctx, grn_obj *buf,
 {
   grn_obj *normalizer;
   const char *normalized;
-  grn_obj *grn_string;
+  grn_obj *grn_string = NULL;
 
   unsigned int normalized_length_in_bytes;
   unsigned int normalized_n_characters;
@@ -373,7 +373,10 @@ normalize(grn_ctx *ctx, grn_obj *buf,
   GRN_TEXT_PUTC(ctx, outbuf, '\0');
   ret_normalized = GRN_TEXT_VALUE(outbuf);
 
-  grn_obj_unlink(ctx, grn_string);
+  if (grn_string) {
+    grn_obj_unlink(ctx, grn_string);
+    grn_string = NULL;
+  }
 
   return ret_normalized;
 }
@@ -706,7 +709,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     if (is_phrase) {
       string s = term;
       re2::RE2::GlobalReplace(&s, " ", "_");
-      term = s.c_str();
+      strcpy((char *)term, s.c_str());
     }
 
     int array_len;
@@ -1728,7 +1731,10 @@ filter_and_add_vector_element(grn_ctx *ctx,
     if (option.is_phrase[i]) {
       re2::RE2::GlobalReplace(&s, " ", "_");
     }
-    *column_value_p = s.c_str();
+    GRN_BULK_REWIND(get_buf);
+    GRN_TEXT_SET(ctx, get_buf, s.c_str(), s.length());
+    GRN_TEXT_PUTC(ctx, get_buf, '\0');
+    *column_value_p = GRN_TEXT_VALUE(get_buf);
   }
   right_trim((char *)*column_value_p, '\n');
   right_trim((char *)*column_value_p, ' ');
