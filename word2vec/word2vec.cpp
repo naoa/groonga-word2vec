@@ -555,12 +555,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char st1[max_size];
   char bestw[N][max_size];
   char *st[100];
-
   float dist, len, bestd[N], vec[max_size];
   long long a, b, c, d, cn, bi[100];
   char op[100] = {'+'};
-  unsigned int max;
-
+  unsigned int end;
   grn_obj *var;
   int offset = 0;
   int limit = 10;
@@ -580,17 +578,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   unsigned int column_names_len = 0;
   char *sortby = NULL;
   unsigned int sortby_len = 0;
-
   long long st_pos = 0;
-
   char file_name[max_size];
   int model_index = 0;
-
   grn_obj *table = NULL;
   grn_obj *res = NULL;
-
-  for (a = 0; a < N; a++) bestd[a] = -1;
-  for (a = 0; a < N; a++) bestw[a][0] = 0;
 
   st1[0] = 0;
 
@@ -682,9 +674,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   var = grn_plugin_proc_get_var(ctx, user_data, "term", -1);
-  a = GRN_TEXT_LEN(var);
 
-  if (a == 0) {
+  if (GRN_TEXT_LEN(var) == 0) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_NOTICE,
                    "[plugin][word2vec][distance] empty term");
     grn_ctx_output_bool(ctx, GRN_FALSE);
@@ -692,6 +683,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   } else {
     const char *term;
     grn_obj buf;
+    int array_len;
+    char *result_array[100];
+    int op_row = 1;
+
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
@@ -712,11 +707,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       re2::RE2::GlobalReplace(&s, " ", "_");
       strcpy((char *)term, s.c_str());
     }
-
-    int array_len;
-    char *result_array[100];
-    int op_row = 1;
-
     array_len = split(result_array, NELEMS(result_array), term, " ");
     for (unsigned int i = 0; i < array_len; i++) {
       if (result_array[i][0] == '+'){
@@ -733,13 +723,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         }
       }
     }
-    st1[strlen(st1) + 1] = '\0';
     grn_obj_unlink(ctx, &buf);
   }
-
-  GRN_PLUGIN_LOG(ctx, GRN_LOG_DEBUG,
-                 "[plugin][word2vec][distance] st1 = %s",st1);
-
   cn = split(st, NELEMS(st), st1, " ");
 
   for (a = 0; a < cn; a++) {
@@ -768,7 +753,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   if (b == 0) return NULL;
-  if(cn == 1) {
+  if (cn == 1) {
     for (a = 0; a < size[model_index]; a++) vec[a] = 0;
     for (b = 0; b < cn; b++) {
       if (bi[b] == -1) continue;
@@ -779,7 +764,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < size[model_index]; a++) {
       for (b = 0; b < cn; b++) {
         if (bi[b] == -1) continue;
-        if(op[b] == '-') {
+        if (op[b] == '-') {
           vec[a] -= M[model_index][a + bi[b] * size[model_index]];
         } else {
           vec[a] += M[model_index][a + bi[b] * size[model_index]];
@@ -859,9 +844,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   if (offset + limit > N) {
-    max = N;
+    end = N;
   } else {
-    max = offset + limit;
+    end = offset + limit;
   }
 
   if (expander_mode == GRN_EXPANDER_EXPANDED) {
@@ -870,57 +855,55 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_BULK_REWIND(&buf);
     GRN_TEXT_PUTS(ctx, &buf, "((");
     GRN_TEXT_PUTS(ctx, &buf, st1);
-    for (a = offset; a < max; a++) {
+    for (a = offset; a < end; a++) {
       if (output_filter != NULL) {
         string s = bestw[a];
         re2::RE2::GlobalReplace(&s, output_filter, "");
         strcpy(bestw[a],s.c_str());
       }
       if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-        if ( a < max) {
+        if ( a < end) {
           GRN_TEXT_PUTS(ctx, &buf, ") OR (");
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         } else {
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         }
       } else {
-        if (max < N) {
-          max++;
+        if (end < N) {
+          end++;
         }
       }
     }
     GRN_TEXT_PUTS(ctx, &buf, "))");
     grn_ctx_output_obj(ctx, &buf, NULL);
     grn_obj_unlink(ctx, &buf);
-  }
-  else if (expander_mode == GRN_EXPANDER_TSV) {
+  } else if (expander_mode == GRN_EXPANDER_TSV) {
     grn_obj buf;
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
     GRN_TEXT_PUTS(ctx, &buf, st1);
-    for (a = offset; a < max; a++) {
+    for (a = offset; a < end; a++) {
       if (output_filter != NULL) {
         string s = bestw[a];
         re2::RE2::GlobalReplace(&s, output_filter, "");
         strcpy(bestw[a],s.c_str());
       }
       if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-        if ( a < max - 1){
+        if ( a < end - 1){
           GRN_TEXT_PUTC(ctx, &buf, '\t');
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         } else {
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         }
       } else {
-        if (max < N) {
-          max++;
+        if (end < N) {
+          end++;
         }
       }
     }
     grn_ctx_output_obj(ctx, &buf, NULL);
     grn_obj_unlink(ctx, &buf);
-  }
-  else {
+  } else {
     if (is_sentence_vectors && res) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
     } else {
@@ -930,7 +913,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       grn_ctx_output_float(ctx, st_pos);
       grn_ctx_output_array_close(ctx);
       grn_ctx_output_array_open(ctx, "SIMILAR_WORDS", N);
-      for (a = offset; a < max; a++) {
+      for (a = offset; a < end; a++) {
         if (output_filter != NULL) {
           string s = bestw[a];
           re2::RE2::GlobalReplace(&s, output_filter, "");
@@ -942,8 +925,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           grn_ctx_output_float(ctx, bestd[a]);
           grn_ctx_output_array_close(ctx);
         } else {
-          if (max < N) {
-            max++;
+          if (end < N) {
+            end++;
           }
         }
       }
