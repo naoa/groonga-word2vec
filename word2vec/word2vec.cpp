@@ -1822,6 +1822,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       if (result) {
         grn_table_select(ctx, table, cond, result, GRN_OP_OR);
       }
+      if (cond) {
+        grn_obj_unlink(ctx, cond);
+      }
     }
     if (result) {
       cur = grn_table_cursor_open(ctx, result, NULL, 0, NULL, 0, 0, -1,
@@ -1842,6 +1845,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       GRN_TEXT_INIT(&vbuf, GRN_OBJ_VECTOR);
 
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
+        if (result) {
+          grn_table_get_key(ctx, result, id, &id, sizeof(unsigned int));
+        }
         GRN_BULK_REWIND(&vbuf);
         for (i = 0; i < array_len; i++) {
           const char *column_value_p = NULL;
