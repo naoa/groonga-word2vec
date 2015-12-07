@@ -21,9 +21,7 @@ load --table Entries
 ]
 [[0,0.0,0.0],6]
 word2vec_train Entries title,tags --min_count 1 --output_file "db/db_w2v.bin"
-[[0,0.0,0.0],true]
 word2vec_train Entries title,tag --min_count 1 --output_file "db/db2_w2v.bin"
-[[0,0.0,0.0],true]
 word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
 [
   [
