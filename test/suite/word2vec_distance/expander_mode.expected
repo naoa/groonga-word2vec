@@ -57,7 +57,7 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 [[0,0.0,0.0],43]
-word2vec_train Entries title,tag,tags*9 --min_count 1 --cbow 0
+word2vec_train Entries title,tag,tags*9 --min_count 1 --cbow 0 --hs 0
 [[0,0.0,0.0],true]
 word2vec_distance "MySQL" --limit 1 --threshold 0.15 --expander_mode 1
 [[0,0.0,0.0],"((mysql) OR (postgresql))"]

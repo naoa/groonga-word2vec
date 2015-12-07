@@ -13,5 +13,5 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 
-word2vec_train Entries title,tag,tags --min_count 1 --cbow 1 --sentence_vectors 1
+word2vec_train Entries title,tag,tags --min_count 1 --cbow 1 --hs 0 --sentence_vectors 1
 word2vec_distance "doc_id:1"
