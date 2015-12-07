@@ -554,7 +554,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 {
   char st1[max_size];
   char bestw[N][max_size];
-  char st[100][max_size];
+  char *st[100];
+
   float dist, len, bestd[N], vec[max_size];
   long long a, b, c, d, cn, bi[100];
   char op[100] = {'+'};
@@ -732,29 +733,15 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         }
       }
     }
-    st1[strlen(st1) + 1] = 0;
+    st1[strlen(st1) + 1] = '\0';
     grn_obj_unlink(ctx, &buf);
   }
 
   GRN_PLUGIN_LOG(ctx, GRN_LOG_DEBUG,
                  "[plugin][word2vec][distance] st1 = %s",st1);
 
-  cn = 0;
-  b = 0;
-  c = 0;
-  while (1) {
-    st[cn][b] = st1[c];
-    b++;
-    c++;
-    st[cn][b] = 0;
-    if (st1[c] == 0) break;
-    if (st1[c] == ' ') {
-      cn++;
-      b = 0;
-      c++;
-    }
-  }
-  cn++;
+  cn = split(st, NELEMS(st), st1, " ");
+
   for (a = 0; a < cn; a++) {
     for (b = 0; b < words[model_index]; b++) if (!strcmp(&load_vocab[model_index][b * max_w], st[a])) break;
     if (b == words[model_index]) b = -1;
