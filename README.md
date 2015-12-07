@@ -29,7 +29,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | read_vovab_file    | read_vocab_file | NULL |
 | threads    | 学習時のスレッド数 | 12 |
 | size     |  次元数 | 100 |
-| debug    | debug | 0 |
+| debug    | debug  学習中の標準出力を止める場合は0 | 2 |
 | binary    | モデルファイルをテキスト形式にする場合は0  distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
 | cbow    | skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
