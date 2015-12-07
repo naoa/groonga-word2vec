@@ -85,6 +85,7 @@ typedef struct {
   unsigned int normalizer_len;
   grn_bool is_phrase[20];
   grn_bool is_mecab[20];
+  grn_bool is_remove_symbol[20];
   int weights[20];
 } train_option;
 
@@ -1714,10 +1715,14 @@ filter_and_add_vector_element(grn_ctx *ctx,
                                 option.normalizer_len,
                                 get_buf);
   }
-  if (option.input_filter != NULL || option.is_phrase[i]) {
+  if (option.input_filter != NULL || option.is_phrase[i] || option.is_remove_symbol[i]) {
     string s = *column_value_p;
     if (option.input_filter != NULL) {
       re2::RE2::GlobalReplace(&s, option.input_filter, " ");
+      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+    }
+    if (option.is_remove_symbol[i]) {
+      re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([\\W_])", " ");
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_phrase[i]) {
@@ -1787,6 +1792,12 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         right_trim(column_name_array[i], column_name_array[i][strlen(column_name_array[i]) - 1]);
       } else {
         option.weights[i] = 1;
+      }
+      if (column_name_array[i][strlen(column_name_array[i]) - 1] == '$') {
+        option.is_remove_symbol[i] = GRN_TRUE;
+        right_trim(column_name_array[i], '$');
+      } else {
+        option.is_remove_symbol[i] = GRN_FALSE;
       }
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == '_') {
         option.is_phrase[i] = GRN_TRUE;

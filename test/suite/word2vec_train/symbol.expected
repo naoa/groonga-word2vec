@@ -1,0 +1,67 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "Fulltext Search", "tag": "Lib rary", "tags": ["<b>G'roon ga</b>", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+word2vec_train Entries title_,tag_,tags_$ --min_count 1
+word2vec_distance "fulltext_search"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      "fulltext_search",
+      1.0
+    ],
+    [
+      [
+        "lib_rary",
+        0.18340303003788
+      ],
+      [
+        "mysql",
+        0.0758075639605522
+      ],
+      [
+        "rroonga",
+        0.0564095415174961
+      ],
+      [
+        "_g_roon_ga_",
+        0.0368562042713165
+      ],
+      [
+        "server",
+        -0.000387371052056551
+      ],
+      [
+        "</s>",
+        -0.0632898360490799
+      ],
+      [
+        "database",
+        -0.13147459924221
+      ],
+      [
+        "postgresql",
+        -0.170803934335709
+      ]
+    ]
+  ]
+]
