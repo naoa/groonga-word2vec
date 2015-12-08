@@ -954,6 +954,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < size[model_index]; a++) dist += vec[a] * M[model_index][a + c * size[model_index]];
     for (a = 0; a < N; a++) {
       if (dist > bestd[a]) {
+        if (threshold > 0 && dist < threshold) {
+          break;
+        }
         if (is_sentence_vectors) {
           if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
             break;
