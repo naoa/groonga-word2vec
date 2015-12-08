@@ -581,7 +581,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   long long st_pos = 0;
   char file_name[max_size];
   int model_index = 0;
-  grn_obj *table = NULL;
+  grn_obj *g_table = NULL;
   grn_obj *res = NULL;
 
   st1[0] = '\0';
@@ -778,12 +778,22 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
-  if (is_sentence_vectors) {
-    grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
-    if (table) {
+  if ((is_sentence_vectors && table_len)) {
+    g_table = grn_ctx_get(ctx, table_name, table_len);
+    if (!g_table) {
+      GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                     "[word2vec_distance] couldn't open table %.*s", table_len, table_name);
+      return NULL;
+    }
+    if (g_table) {
       res = grn_table_create(ctx, NULL, 0, NULL,
                                   GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
-                                  table, NULL);
+                                  g_table, NULL);
+    }
+    if (!res) {
+      GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                     "[word2vec_distance] couldn't create temp table");
+      return NULL;
     }
   }
 
@@ -943,9 +953,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_obj_close(ctx, res);
     res = NULL;
   }
-  if (table) {
-    grn_obj_close(ctx, table);
-    table = NULL;
+  if (g_table) {
+    grn_obj_close(ctx, g_table);
+    g_table = NULL;
   }
 
   return NULL;
@@ -1753,8 +1763,8 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                      char *filter,
                      train_option option)
 {
-  grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
-  if (table) {
+  grn_obj *g_table = grn_ctx_get(ctx, table_name, table_len);
+  if (g_table) {
     FILE *fo = fopen(train_file, "wb");
     char *column_name_array[20];
     int i, t, array_len;
@@ -1792,14 +1802,14 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       } else {
         option.is_mecab[i] = GRN_FALSE;
       }
-      columns[i] = grn_obj_column(ctx, table, column_name_array[i], strlen(column_name_array[i]));
+      columns[i] = grn_obj_column(ctx, g_table, column_name_array[i], strlen(column_name_array[i]));
     }
 
     /* select by script */
     if (filter) {
       grn_obj *v, *cond;
 
-      GRN_EXPR_CREATE_FOR_QUERY(ctx, table, cond, v);
+      GRN_EXPR_CREATE_FOR_QUERY(ctx, g_table, cond, v);
       grn_expr_parse(ctx, cond,
                      filter,
                      strlen(filter),
@@ -1810,9 +1820,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
 
       result = grn_table_create(ctx, NULL, 0, NULL,
                                 GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
-                                table, NULL);
+                                g_table, NULL);
       if (result) {
-        grn_table_select(ctx, table, cond, result, GRN_OP_OR);
+        grn_table_select(ctx, g_table, cond, result, GRN_OP_OR);
       }
       if (cond) {
         grn_obj_unlink(ctx, cond);
@@ -1822,7 +1832,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       cur = grn_table_cursor_open(ctx, result, NULL, 0, NULL, 0, 0, -1,
                                   GRN_CURSOR_BY_ID);
     } else {
-      cur = grn_table_cursor_open(ctx, table, NULL, 0, NULL, 0, 0, -1,
+      cur = grn_table_cursor_open(ctx, g_table, NULL, 0, NULL, 0, 0, -1,
                                   GRN_CURSOR_BY_ID);
     }
 
@@ -1929,8 +1939,8 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         result = NULL;
       }
     }
-    grn_obj_unlink(ctx, table);
-    table = NULL;
+    grn_obj_unlink(ctx, g_table);
+    g_table = NULL;
     fclose(fo);
     return GRN_TRUE;
   } else {
