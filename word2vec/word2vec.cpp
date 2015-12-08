@@ -74,6 +74,8 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define DOC_ID_PREFIX "doc_id:"
 #define DOC_ID_PREFIX_LEN 7
 
+#define MAX_COLUMNS 20
+
 typedef struct {
   double score;
   int n_subrecs;
@@ -87,10 +89,10 @@ typedef struct {
   char *mecab_option;
   char *normalizer_name;
   unsigned int normalizer_len;
-  grn_bool is_phrase[20];
-  grn_bool is_mecab[20];
-  grn_bool is_remove_symbol[20];
-  int weights[20];
+  grn_bool is_phrase[MAX_COLUMNS];
+  grn_bool is_mecab[MAX_COLUMNS];
+  grn_bool is_remove_symbol[MAX_COLUMNS];
+  int weights[MAX_COLUMNS];
 } train_option;
 
 
@@ -1763,6 +1765,7 @@ static int ArgPos(char *str, int argc, char **argv) {
   }
   return -1;
 }
+/* word2vec-sentence2vec.c */
 
 static grn_bool
 is_record(grn_ctx *ctx, grn_obj *obj)
@@ -1859,9 +1862,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
   grn_obj *g_table = grn_ctx_get(ctx, table_name, table_len);
   if (g_table) {
     FILE *fo = fopen(train_file, "wb");
-    char *column_name_array[20];
+    char *column_name_array[MAX_COLUMNS];
     int i, t, array_len;
-    grn_obj *columns[20];
+    grn_obj *columns[MAX_COLUMNS];
     grn_table_cursor *cur;
     grn_obj *result = NULL;
 

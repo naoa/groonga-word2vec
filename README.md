@@ -16,7 +16,7 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する  末尾が``$``の場合、``<.*>``と数字と``,.;:&^/-#'"()``を削除 | NULL | 
+| column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する  末尾が``$``の場合、``<.*>``と数字と``,.;:&^/-#'"()``を削除  カラムの上限数20 | NULL | 
 | filter      | Groongaの[スクリプト構文](http://groonga.org/ja/docs/reference/grn_expr/script_syntax.html)で絞り込む | NULL |
 | train_file     | 学習用テキストファイル(一時ファイル) |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
@@ -136,7 +136,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | edit_distance   | 出力結果を編集距離の近い順にする場合1  編集距離は_scoreにセットされる | 0 |
-| expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) | 0 |
+| expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ  1:クエリ展開 ((query1) OR (query2)) | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
 | column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可 | _id,_value |
@@ -235,7 +235,8 @@ word2vec_distance "doc_id:2" --sentence_vectors 1 --table Entries --column _id,t
 
 学習済みモデルファイルをロードします。
 
-ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.bin`がロードされま>す。
+ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.bin`がロードされます。
+20個まで同時にロードすることができます。
 
 モデルファイルのサイズにより、ロードは、数秒以上かかることがあります。
 Groongaのデータベースを閉じると、自動的にアンロードされます。
