@@ -68,8 +68,8 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 
 #define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
 
-#define DEFAULT_SORTBY          "-_value"
-#define DEFAULT_OUTPUT_COLUMNS  "_id,_value"
+#define DEFAULT_SORTBY          "-_score"
+#define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
 #define DOC_ID_PREFIX "doc_id:"
 #define DOC_ID_PREFIX_LEN 7
@@ -1065,7 +1065,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           doc_id_p += DOC_ID_PREFIX_LEN;
           doc_id = atoi(doc_id_p);
           if (doc_id) {
-            add_record_value(ctx, res, &doc_id, sizeof(grn_id), dist);
+            add_record(ctx, res, &doc_id, sizeof(grn_id), dist);
           }
         } else {
           add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
