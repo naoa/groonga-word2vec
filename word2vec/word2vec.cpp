@@ -1872,11 +1872,11 @@ filter_and_add_vector_element(grn_ctx *ctx,
       re2::RE2::GlobalReplace(&s, "([a-zA-Z]+)", " ");
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
-    if (option.label[i].length() > 0) {
-      s = option.label[i] + s;
-    }
     if (option.is_phrase[i]) {
       re2::RE2::GlobalReplace(&s, " ", "_");
+    }
+    if (option.label[i].length() > 0) {
+      s = option.label[i] + s;
     }
     GRN_BULK_REWIND(get_buf);
     GRN_TEXT_SET(ctx, get_buf, s.c_str(), s.length());
@@ -1926,6 +1926,14 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     /* parse column option */
     array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
     for (i = 0; i < array_len; i++) {
+      if (column_name_array[i][strlen(column_name_array[i]) - 1] == ']') {
+        string s = column_name_array[i];
+        re2::RE2::FullMatch(s, ".*\\[(.+)\\]", &option.label[i]);
+        re2::RE2::GlobalReplace(&s, "\\[.+\\]$", "");
+        strcpy(column_name_array[i], s.c_str());
+      } else {
+        option.label[i] = "";
+      }
       if (column_name_array[i][strlen(column_name_array[i]) - 2] == '*' &&
           column_name_array[i][strlen(column_name_array[i]) - 1] >= '2' &&
           column_name_array[i][strlen(column_name_array[i]) - 1] <= '9') {
@@ -1958,14 +1966,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         right_trim(column_name_array[i], '/');
       } else {
         option.is_mecab[i] = GRN_FALSE;
-      }
-      if (column_name_array[i][strlen(column_name_array[i]) - 1] == ']') {
-        string s = column_name_array[i];
-        re2::RE2::FullMatch(s, ".*\\[(.+)\\]", &option.label[i]);
-        re2::RE2::GlobalReplace(&s, "\\[.+\\]$", "");
-        strcpy(column_name_array[i], s.c_str());
-      } else {
-        option.label[i] = "";
       }
       columns[i] = grn_obj_column(ctx, g_table, column_name_array[i], strlen(column_name_array[i]));
     }
