@@ -2416,7 +2416,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[21];
+  grn_expr_var vars[20];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
@@ -2451,27 +2451,27 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[7], "sentence_vectors", -1);
   grn_plugin_command_create(ctx, "dump_to_train_file", -1, command_dump_to_train_file, 8, vars);
 
-  grn_plugin_expr_var_init(ctx, &vars[1], "train_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[3], "is_output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[4], "save_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[5], "read_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "debug", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "cbow", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "window", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "sample", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "hs", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "negative", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "iter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "min_count", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "classes", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "is_output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[20], "sentence_vectors", -1);
-  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 21, vars);
+  grn_plugin_expr_var_init(ctx, &vars[0], "train_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "is_output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "save_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "read_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "debug", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "cbow", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "window", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "sample", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "hs", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "negative", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "iter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "min_count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "classes", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "is_output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "sentence_vectors", -1);
+  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 20, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,

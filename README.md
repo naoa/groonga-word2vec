@@ -5,6 +5,7 @@ Groongaにword2vecのコマンド、関数を追加します。
 * ```word2vec_train```  
 * ```word2vec_distance```  
 * ```word2vec_load```  
+* ```word2vec_unload```  
 * ```QueryExpanderWord2vec```
 
 ## コマンド
