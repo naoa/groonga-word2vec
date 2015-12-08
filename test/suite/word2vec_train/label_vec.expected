@@ -8,7 +8,7 @@ column_create Entries title COLUMN_SCALAR ShortText
 [[0,0.0,0.0],true]
 column_create Entries tag COLUMN_SCALAR Tags
 [[0,0.0,0.0],true]
-column_create Entries tags COLUMN_VECTOR Tags
+column_create Entries tags COLUMN_VECTOR ShortText
 [[0,0.0,0.0],true]
 load --table Entries
 [
@@ -16,7 +16,7 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 [[0,0.0,0.0],2]
-word2vec_train Entries title,tags,tag --min_count 1 --input_add_prefix_second "tag:"
+word2vec_train Entries tags[tag:],title,tag --min_count 1
 [[0,0.0,0.0],true]
 word2vec_distance "tag:groonga"
 [
@@ -40,36 +40,36 @@ word2vec_distance "tag:groonga"
       ]
     ],
     [
-      "tag:postgresql",
-      0.236046329140663
-    ],
-    [
-      "fulltextsearch",
-      0.183403044939041
-    ],
-    [
-      "</s>",
-      0.0981750339269638
-    ],
-    [
-      "server",
-      -0.024527195841074
+      "tag:rroonga",
+      0.18340303003788
     ],
     [
       "database",
-      -0.038426760584116
-    ],
-    [
-      "tag:rroonga",
-      -0.041764497756958
-    ],
-    [
-      "tag:mysql",
-      -0.0477972477674484
+      0.0758075639605522
     ],
     [
       "library",
-      -0.128371581435204
+      0.0564095415174961
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165
+    ],
+    [
+      "tag:postgresql",
+      -0.000387371052056551
+    ],
+    [
+      "</s>",
+      -0.0632898360490799
+    ],
+    [
+      "tag:mysql",
+      -0.13147459924221
+    ],
+    [
+      "server",
+      -0.170803934335709
     ]
   ]
 ]

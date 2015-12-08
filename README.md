@@ -16,14 +16,12 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
 | table      | Groongaのテーブル | NULL |
-| column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する  末尾が``$``の場合、``<.*>``と``0-9,.;:&^/-−#'"()、。【】「」~・``を削除  末尾が``@``の場合、アルファベット削除  カラムの上限数20 | NULL | 
+| column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する  末尾が``$``の場合、``<.*>``と``0-9,.;:&^/-−#'"()、。【】「」~・``を削除  末尾が``@``の場合、アルファベット削除  末尾が``[.*]``の場合、[]で囲まれたラベルを先頭に追加   カラムの上限数20 | NULL | 
 | filter      | Groongaの[スクリプト構文](http://groonga.org/ja/docs/reference/grn_expr/script_syntax.html)で絞り込む | NULL |
 | train_file     | 学習用テキストファイル(一時ファイル) |  `{groonga_db}_w2v.txt` |
 | output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
-| input_add_prefix   | 1カラム目の出力の先頭に追加したい文字列 | NULL |
-| input_add_prefix_second   | 2カラム目の出力の先頭に追加したい文字列 | NULL |
 | mecab_option   | MeCabのオプション Mecab使わない場合NONE | -Owakati |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |

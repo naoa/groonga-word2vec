@@ -5,7 +5,7 @@ table_create Tags TABLE_PAT_KEY ShortText
 table_create Entries TABLE_NO_KEY
 column_create Entries title COLUMN_SCALAR ShortText
 column_create Entries tag COLUMN_SCALAR Tags
-column_create Entries tags COLUMN_VECTOR Tags
+column_create Entries tags COLUMN_VECTOR ShortText
 
 load --table Entries
 [
@@ -13,5 +13,5 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 
-word2vec_train Entries tag,title,tags --min_count 1 --input_add_prefix_second "tag:"
-word2vec_distance "tag:fulltextsearch"
+word2vec_train Entries tags[tag:],title,tag --min_count 1
+word2vec_distance "tag:groonga"

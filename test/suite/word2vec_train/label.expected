@@ -16,7 +16,7 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 [[0,0.0,0.0],2]
-word2vec_train Entries title,tag,tags --min_count 1 --input_add_prefix "tag:"
+word2vec_train Entries title[tag:],tag,tags --min_count 1
 [[0,0.0,0.0],true]
 word2vec_distance "tag:fulltextsearch"
 [
