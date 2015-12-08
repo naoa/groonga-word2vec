@@ -196,6 +196,54 @@ add_doc_id(grn_ctx *ctx, grn_obj *res, grn_id doc_id, double score)
 }
 
 static void
+output_for_expander(grn_ctx *ctx, grn_obj *res, int offset, int limit, const char *sortby_val, unsigned int sortby_len, grn_obj *outbuf)
+{
+  grn_obj *sorted;
+  if ((sorted = grn_table_create(ctx, NULL, 0, NULL, GRN_OBJ_TABLE_NO_KEY, NULL, res))) {
+    uint32_t nkeys;
+    grn_table_sort_key *keys;
+    const char *oc_val;
+    unsigned int oc_len;
+    int offset = 0;
+    int limit = 1;
+    grn_obj buf;
+    GRN_TEXT_INIT(&buf, 0);
+    if (!sortby_val || !sortby_len) {
+      sortby_val = DEFAULT_SORTBY;
+      sortby_len = sizeof(DEFAULT_SORTBY) - 1;
+    }
+    if (!oc_val || !oc_len) {
+      oc_val = DEFAULT_OUTPUT_COLUMNS;
+      oc_len = sizeof(DEFAULT_OUTPUT_COLUMNS) - 1;
+    }
+
+    if ((keys = grn_table_sort_key_from_str(ctx, sortby_val, sortby_len, res, &nkeys))) {
+      grn_table_sort(ctx, res, offset, limit, sorted, keys, nkeys);
+      grn_table_cursor *tc;
+      if ((tc = grn_table_cursor_open(ctx, sorted, NULL, 0, NULL, 0, offset, limit, GRN_CURSOR_BY_ID))) {
+        grn_id id;
+        grn_obj *column = grn_obj_column(ctx, sorted,
+                                         GRN_COLUMN_NAME_KEY,
+                                         GRN_COLUMN_NAME_KEY_LEN);
+        while ((id = grn_table_cursor_next(ctx, tc))) {
+          GRN_BULK_REWIND(&buf);
+          grn_obj_get_value(ctx, column, id, &buf);
+          GRN_TEXT_PUTS(ctx, outbuf, ") OR (");
+          GRN_TEXT_PUT(ctx, outbuf, GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf));
+        }
+        grn_obj_unlink(ctx, column);
+        grn_table_cursor_close(ctx, tc);
+      }
+      grn_table_sort_key_close(ctx, keys, nkeys);
+    }
+    grn_obj_unlink(ctx, sorted);
+    grn_obj_unlink(ctx, &buf);
+  } else {
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_distance] cannot create temporary sort table.");
+  }
+}
+
+static void
 output(grn_ctx *ctx, grn_obj *res, int offset, int limit, const char *oc_val, unsigned int oc_len, const char *sortby_val, unsigned int sortby_len)
 {
   grn_obj *sorted;
@@ -642,7 +690,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   float dist, len, vec[max_size];
   long long a, b, c, d, cn, bi[100];
   char op[100] = {'+'};
-  unsigned int end;
   grn_obj *var;
   int offset = 0;
   int limit = 10;
@@ -668,8 +715,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   grn_obj *g_table = NULL;
   grn_obj *res = NULL;
   int total = 0;
-
-  st1[0] = '\0';
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -937,39 +982,16 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     total++;
   }
 
-  /*
-  if (offset + limit > total) {
-    end = total;
-  } else {
-    end = offset + limit;
-  }
-  */
-
   if (expander_mode == GRN_EXPANDER_EXPANDED) {
-    /*
     grn_obj buf;
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
     GRN_TEXT_PUTS(ctx, &buf, "((");
     GRN_TEXT_PUTS(ctx, &buf, st1);
-    for (a = offset; a < end; a++) {
-      if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-        if ( a < end) {
-          GRN_TEXT_PUTS(ctx, &buf, ") OR (");
-          GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
-        } else {
-          GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
-        }
-      } else {
-        if (end < N && end < total) {
-          end++;
-        }
-      }
-    }
+    output_for_expander(ctx, res, offset, limit, "-_value", strlen("-_value"), &buf);
     GRN_TEXT_PUTS(ctx, &buf, "))");
     grn_ctx_output_obj(ctx, &buf, NULL);
     grn_obj_unlink(ctx, &buf);
-    */
   } else {
     if (is_sentence_vectors && table_len) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
