@@ -136,7 +136,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | edit_distance   | 出力結果を編集距離の近い順にする合1  最終スコアは編集距離で上書きされる | 0 |
-| expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
+| expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
 | column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  カラムを出力する場合、最終の_scoreの見かけ上の表示は0になる | _id,_score |
@@ -159,22 +159,29 @@ JSON
   ],
   [
     [
-      "単語",
-      2812
+      3
     ],
     [
       [
-        "語句",
-        0.90013575553894
+        "_key",
+        "ShortText"
       ],
       [
-        "文中",
-        0.886470913887024
-      ],
-      [
-        "辞書",
-        0.883183181285858
+        "_score",
+        "Float"
       ]
+    ],
+    [
+      "語句",
+      0.90013575553894
+    ],
+    [
+      "文中",
+      0.886470913887024
+    ],
+    [
+      "辞書",
+      0.883183181285858
     ]
   ]
 ]

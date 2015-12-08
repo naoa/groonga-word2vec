@@ -27,18 +27,25 @@ word2vec_distance "Groonga" --threshold 0.0001
   ],
   [
     [
-      "groonga",
-      3.0
+      2
     ],
     [
       [
-        "rroonga",
-        0.12582902610302
+        "_key",
+        "ShortText"
       ],
       [
-        "fulltextsearch",
-        0.0368562042713165
+        "_score",
+        "Float"
       ]
+    ],
+    [
+      "rroonga",
+      0.12582902610302
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165
     ]
   ]
 ]

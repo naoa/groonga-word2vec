@@ -1,0 +1,20 @@
+plugin_register word2vec/word2vec
+
+table_create Tags TABLE_PAT_KEY ShortText
+
+table_create Entries TABLE_NO_KEY
+column_create Entries title COLUMN_SCALAR ShortText
+column_create Entries tag COLUMN_SCALAR Tags
+column_create Entries tags COLUMN_VECTOR Tags
+column_create Entries de COLUMN_SCALAR Float
+
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"], "de": 1.00},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"], "de": 2.101}
+]
+
+select Entries
+
+word2vec_train Entries title,tag,tags --min_count 1
+word2vec_distance "Groa"

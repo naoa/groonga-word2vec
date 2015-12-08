@@ -1,0 +1,106 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+column_create Entries de COLUMN_SCALAR Float
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"], "de": 1.00},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"], "de": 2.101}
+]
+[[0,0.0,0.0],2]
+select Entries
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      [
+        2
+      ],
+      [
+        [
+          "_id",
+          "UInt32"
+        ],
+        [
+          "de",
+          "Float"
+        ],
+        [
+          "tag",
+          "Tags"
+        ],
+        [
+          "tags",
+          "Tags"
+        ],
+        [
+          "title",
+          "ShortText"
+        ]
+      ],
+      [
+        1,
+        1.0,
+        "Library",
+        [
+          "Groonga",
+          "Rroonga"
+        ],
+        "FulltextSearch"
+      ],
+      [
+        2,
+        2.101,
+        "Server",
+        [
+          "MySQL",
+          "PostgreSQL"
+        ],
+        "Database"
+      ]
+    ]
+  ]
+]
+word2vec_train Entries title,tag,tags --min_count 1
+[[0,0.0,0.0],true]
+word2vec_distance "Groa"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]

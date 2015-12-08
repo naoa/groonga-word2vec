@@ -27,22 +27,29 @@ word2vec_distance "Groonga" --limit 3 --offset 3
   ],
   [
     [
-      "groonga",
-      3.0
+      8
     ],
     [
       [
-        "postgresql",
-        -0.0281914249062538
+        "_key",
+        "ShortText"
       ],
       [
-        "library",
-        -0.0417644791305065
-      ],
-      [
-        "database",
-        -0.0530047751963139
+        "_score",
+        "Float"
       ]
+    ],
+    [
+      "postgresql",
+      -0.0281914249062538
+    ],
+    [
+      "library",
+      -0.0417644791305065
+    ],
+    [
+      "database",
+      -0.0530047751963139
     ]
   ]
 ]

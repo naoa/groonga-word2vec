@@ -27,22 +27,29 @@ word2vec_distance "Groonga" --limit 3
   ],
   [
     [
-      "groonga",
-      3.0
+      8
     ],
     [
       [
-        "rroonga",
-        0.12582902610302
+        "_key",
+        "ShortText"
       ],
       [
-        "fulltextsearch",
-        0.0368562042713165
-      ],
-      [
-        "mysql",
-        -0.0158039312809706
+        "_score",
+        "Float"
       ]
+    ],
+    [
+      "rroonga",
+      0.12582902610302
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165
+    ],
+    [
+      "mysql",
+      -0.0158039312809706
     ]
   ]
 ]

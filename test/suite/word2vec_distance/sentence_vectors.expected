@@ -28,18 +28,25 @@ word2vec_distance "doc_id:2" --sentence_vectors 1
   ],
   [
     [
-      "doc_id:2",
-      10.0
+      2
     ],
     [
       [
-        "doc_id:3",
-        0.144161820411682
+        "_key",
+        "ShortText"
       ],
       [
-        "doc_id:1",
-        0.0506224483251572
+        "_score",
+        "Float"
       ]
+    ],
+    [
+      "doc_id:3",
+      0.144161820411682
+    ],
+    [
+      "doc_id:1",
+      0.0506224483251572
     ]
   ]
 ]
