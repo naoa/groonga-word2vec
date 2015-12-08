@@ -686,8 +686,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
                           grn_user_data *user_data)
 {
   char st1[max_size];
+  const long long N = 40; // number of closest words that will be shown
   char *st[100];
   float dist, len, vec[max_size];
+  char **bestw;
+  float *bestd;
   long long a, b, c, d, cn, bi[100];
   char op[100] = {'+'};
   grn_obj *var;
@@ -931,8 +934,16 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
+  bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
+  for (a = 0; a < N; a++) {
+    bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_size * sizeof(char));
+  }
+  bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
+
   len = 0;
   for (a = 0; a < size[model_index]; a++) len += vec[a] * vec[a];
+  for (a = 0; a < N; a++) bestd[a] = -1;
+  for (a = 0; a < N; a++) bestw[a][0] = 0;
   len = sqrt(len);
   for (a = 0; a < size[model_index]; a++) vec[a] /= len;
   for (c = 0; c < words[model_index]; c++) {
@@ -941,45 +952,54 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     if (a == 1) continue;
     dist = 0;
     for (a = 0; a < size[model_index]; a++) dist += vec[a] * M[model_index][a + c * size[model_index]];
-    if (threshold > 0 && dist < threshold) {
-      continue;
-    }
-    if (is_sentence_vectors) {
-      if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
-        continue;
-      }
-    }
-    if (white_term_filter != NULL) {
-      string s = &load_vocab[model_index][c * max_w];
-      string t = white_term_filter;
-      if ( !RE2::FullMatch(s, t) ) {
-        continue;
-      }
-    }
-    if (term_filter != NULL) {
-      string s = &load_vocab[model_index][c * max_w];
-      string t = term_filter;
-      if ( RE2::FullMatch(s, t) ) {
-        continue;
-      }
-    }
+    for (a = 0; a < N; a++) {
+      if (dist > bestd[a]) {
+        if (is_sentence_vectors) {
+          if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
+            break;
+          }
+        }
+        if (white_term_filter != NULL) {
+          string s = &load_vocab[model_index][c * max_w];
+          string t = white_term_filter;
+          if ( !RE2::FullMatch(s, t) ) {
+            break;
+          }
+        }
+        if (term_filter != NULL) {
+          string s = &load_vocab[model_index][c * max_w];
+          string t = term_filter;
+          if ( RE2::FullMatch(s, t) ) {
+            break;
+          }
+        }
 
-    if (is_sentence_vectors && table_len) {
-      char *doc_id;
-      grn_id int_doc_id = 0;
-      doc_id = &load_vocab[model_index][c * max_w];
-      /* forward to "doc_id:" */
-      for (int r = 0; r < 7; r++) {
-        doc_id++;
+        for (d = N - 1; d > a; d--) {
+          bestd[d] = bestd[d - 1];
+          strcpy(bestw[d], bestw[d - 1]);
+        }
+        bestd[a] = dist;
+        strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
+
+        if (is_sentence_vectors && table_len) {
+          char *doc_id;
+          grn_id int_doc_id = 0;
+          doc_id = &load_vocab[model_index][c * max_w];
+          /* forward to "doc_id:" */
+          for (int r = 0; r < 7; r++) {
+            doc_id++;
+          }
+          int_doc_id = atoi(doc_id);
+          if (int_doc_id) {
+            add_record_value(ctx, res, &int_doc_id, sizeof(grn_id), dist);
+          }
+        } else {
+          add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
+        }
+        total++;
+        break;
       }
-      int_doc_id = atoi(doc_id);
-      if (int_doc_id) {
-        add_record_value(ctx, res, &int_doc_id, sizeof(grn_id), dist);
-      }
-    } else {
-      add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
     }
-    total++;
   }
 
   if (expander_mode == GRN_EXPANDER_EXPANDED) {
@@ -1002,6 +1022,15 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       output(ctx, res, offset, limit, "_key,_value", strlen("_key,_value"), "-_value", strlen("-_value"));
     }
   }
+
+  for (a = 0; a < N; a++) {
+    GRN_PLUGIN_FREE(ctx, bestw[a]);
+    bestw[a] = NULL;
+  }
+  GRN_PLUGIN_FREE(ctx, bestw);
+  bestw = NULL;
+  GRN_PLUGIN_FREE(ctx, bestd);
+  bestd = NULL;
 
   if (res) {
     grn_obj_close(ctx, res);
