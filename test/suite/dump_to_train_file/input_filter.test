@@ -14,5 +14,5 @@ load --table Entries
 ]
 
 dump_to_train_file Entries title,tag,tags --input_filter "nga"
-word2vec_train --min_count 1
+word2vec_train --min_count 1 --hs 0
 word2vec_distance "Groo"
