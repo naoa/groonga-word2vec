@@ -18,64 +18,9 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"], "de": 2.101}
 ]
 [[0,0.0,0.0],2]
-select Entries
-[
-  [
-    0,
-    0.0,
-    0.0
-  ],
-  [
-    [
-      [
-        2
-      ],
-      [
-        [
-          "_id",
-          "UInt32"
-        ],
-        [
-          "de",
-          "Float"
-        ],
-        [
-          "tag",
-          "Tags"
-        ],
-        [
-          "tags",
-          "Tags"
-        ],
-        [
-          "title",
-          "ShortText"
-        ]
-      ],
-      [
-        1,
-        1.0,
-        "Library",
-        [
-          "Groonga",
-          "Rroonga"
-        ],
-        "FulltextSearch"
-      ],
-      [
-        2,
-        2.101,
-        "Server",
-        [
-          "MySQL",
-          "PostgreSQL"
-        ],
-        "Database"
-      ]
-    ]
-  ]
-]
-word2vec_train Entries title,tag,tags --min_count 1
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1
 [[0,0.0,0.0],true]
 word2vec_distance "Groa"
 [

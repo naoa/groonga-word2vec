@@ -89,6 +89,7 @@ typedef struct {
   char *mecab_option;
   char *normalizer_name;
   unsigned int normalizer_len;
+  grn_bool is_sentence_vectors;
   grn_bool is_phrase[MAX_COLUMNS];
   grn_bool is_mecab[MAX_COLUMNS];
   grn_bool is_remove_symbol[MAX_COLUMNS];
@@ -2073,7 +2074,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
             }
           }
         }
-        if (sentence_vectors) {
+        if (option.is_sentence_vectors) {
           fprintf(fo, "%.*s%d ", DOC_ID_PREFIX_LEN, DOC_ID_PREFIX, id);
         }
         for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
@@ -2110,10 +2111,9 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
   }
 }
 
-
 static grn_obj *
-command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
-                       grn_user_data *user_data)
+command_dump_to_train_file(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                           grn_user_data *user_data)
 {
   grn_obj *var;
   char *table_name = NULL;
@@ -2124,7 +2124,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   unsigned int normalizer_len = 14;
   char *input_filter = NULL;
   char *mecab_option = (char *)"-Owakati";
-  grn_bool is_output_file = GRN_FALSE;
+  grn_bool is_sentence_vectors = GRN_FALSE;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "table", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -2165,6 +2165,59 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
       mecab_option = GRN_TEXT_VALUE(var);
     }
   }
+
+  train_file[0] = 0;
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "train_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    strcpy(train_file, GRN_TEXT_VALUE(var));
+    train_file[GRN_TEXT_LEN(var)] = '\0';
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    is_sentence_vectors = atoi(GRN_TEXT_VALUE(var));
+  }
+
+  if (train_file[0] == 0) {
+    get_train_file_path(ctx, train_file);
+  }
+
+  if (table_name != NULL && column_names != NULL) {
+    train_option option;
+    option.input_filter = input_filter;
+    option.mecab_option = mecab_option;
+    option.normalizer_name = normalizer_name;
+    option.normalizer_len = normalizer_len;
+    option.is_sentence_vectors = is_sentence_vectors;
+
+    if(column_to_train_file(ctx, train_file,
+                            table_name, table_len,
+                            column_names, filter,
+                            option) == GRN_TRUE)
+     {
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_NOTICE,
+                       "[dump_to_train_file] Dump column to train file %s", train_file);
+     } else {
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                       "[dump_to_train_file] Dump column to train file %s failed.", train_file);
+        return NULL;
+     }
+    grn_ctx_output_bool(ctx, GRN_TRUE);
+  } else {
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                   "[dump_to_train_file] Missing table name or column name.");
+    grn_ctx_output_bool(ctx, GRN_FALSE);
+  }
+
+  return NULL;
+}
+
+static grn_obj *
+command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                       grn_user_data *user_data)
+{
+  grn_obj *var;
+  grn_bool is_output_file = GRN_FALSE;
 
   train_file[0] = 0;
   output_file[0] = 0;
@@ -2257,27 +2310,6 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
   if (train_file[0] == 0) {
     get_train_file_path(ctx, train_file);
-  }
-
-  if(table_name != NULL && column_names != NULL) {
-    train_option option;
-    option.input_filter = input_filter;
-    option.mecab_option = mecab_option;
-    option.normalizer_name = normalizer_name;
-    option.normalizer_len = normalizer_len;
-
-    if(column_to_train_file(ctx, train_file,
-                            table_name, table_len,
-                            column_names, filter,
-                            option) == GRN_TRUE)
-     {
-        GRN_PLUGIN_LOG(ctx, GRN_LOG_NOTICE,
-                       "[word2vec_train] Dump column to train file %s", train_file);
-     } else {
-        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
-                       "[word2vec_train] Dump column to train file %s failed.", train_file);
-        return NULL;
-     }
   }
 
   vocab = (struct vocab_word *)calloc(vocab_max_size, sizeof(struct vocab_word));
@@ -2384,7 +2416,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[25];
+  grn_expr_var vars[21];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
@@ -2413,28 +2445,33 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);
   grn_plugin_expr_var_init(ctx, &vars[2], "filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[3], "train_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[4], "output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[5], "normalizer", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "input_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "is_output_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "save_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "read_vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "debug", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "cbow", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "window", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "sample", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "hs", -1);
-  grn_plugin_expr_var_init(ctx, &vars[20], "negative", -1);
-  grn_plugin_expr_var_init(ctx, &vars[21], "iter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[22], "min_count", -1);
-  grn_plugin_expr_var_init(ctx, &vars[23], "classes", -1);
-  grn_plugin_expr_var_init(ctx, &vars[24], "sentence_vectors", -1);
-  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 25, vars);
+  grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "input_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "sentence_vectors", -1);
+  grn_plugin_command_create(ctx, "dump_to_train_file", -1, command_dump_to_train_file, 8, vars);
+
+  grn_plugin_expr_var_init(ctx, &vars[1], "train_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "is_output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "save_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "read_vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "debug", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "cbow", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "window", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "sample", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "hs", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "negative", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "iter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "min_count", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "classes", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "is_output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[20], "sentence_vectors", -1);
+  grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 21, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,

@@ -14,7 +14,6 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"], "de": 2.101}
 ]
 
-select Entries
-
-word2vec_train Entries title,tag,tags --min_count 1
+dump_to_train_file Entries title,tag,tags
+word2vec_train --min_count 1
 word2vec_distance "Groa"

@@ -16,7 +16,9 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL Database", "PostgreSQL"]}
 ]
 [[0,0.0,0.0],2]
-word2vec_train Entries title,tag,tags_ --min_count 1
+dump_to_train_file Entries title,tag,tags_
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1
 [[0,0.0,0.0],true]
 word2vec_distance "Groonga Database" --is_phrase 1
 [

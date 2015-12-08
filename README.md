@@ -1,17 +1,19 @@
 # Groonga word2vec plugin
 Groongaにword2vecのコマンド、関数を追加します。
 
+* ```dump_to_train_file```  
+* ```word2vec_train```  
+* ```word2vec_distance```  
+* ```word2vec_load```  
+* ```QueryExpanderWord2vec```
+
 ## コマンド
-### word2vec_train
-Groongaのカラムに格納されたテキストから学習用のファイルを生成し、word2vecで学習させることができます。
+### ```dump_to_train_file```
+Groongaのカラムに格納されたテキストからword2vec向けの学習用のファイルを生成します。
 
 カラムからの出力に対してMeCabで分かち書きをし、Groongaのノーマライザ―を使って文字の正規化、およびRE2ライブラリを使って正規表現フィルタをかけることができます。
 
-学習用ファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.txt`に出力されます。現状カラムからの出力は一度かならずテキストファイル化されます。
-
-学習済みモデルファイル名が省略された場合、学習済みモデルファイルが`{Groongaのデータベースパス}+_w2v.bin`に出力されます。
-
-* 入力形式
+学習用ファイル名が省略された場合、分かち書きされたテキストファイルが`{Groongaのデータベースパス}+_w2v.txt`に出力されます。
 
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
@@ -19,10 +21,37 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | column      | Groongaのカラム名  ``,``区切りで複数指定可  末尾が``_``の場合、スペースを``_``に置換してフレーズ化する  末尾が``/``の場合、形態素解析する  末尾が``*[2-9]``の場合、その回数だけ繰り返し出力する  末尾が``$``の場合、``<.*>``と``0-9,.;:&^/-−#'"()[]、。【】「」~・``を削除  末尾が``@``の場合、アルファベット削除  末尾が``[.*]``の場合、[]で囲まれたラベルを先頭に追加   カラムの上限数20 | NULL | 
 | filter      | Groongaの[スクリプト構文](http://groonga.org/ja/docs/reference/grn_expr/script_syntax.html)で絞り込む | NULL |
 | train_file     | 学習用テキストファイル(一時ファイル) |  `{groonga_db}_w2v.txt` |
-| output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | normalizer      | Groongaのノーマライザ― NONEの場合なし | NormalizerAuto |
 | input_filter   | 入力テキストから除去したい文字列の正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション Mecab使わない場合NONE | -Owakati |
+| sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
+
+オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
+上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  
+
+* 出力形式  
+JSON
+
+* 実行例
+
+```
+> dump_to_train_file Entries title,tags
+[[0,0.0,0.0],true]
+```
+
+### ```word2vec_train```
+スペース区切りの学習用テキストからword2vecで学習させます。
+
+学習用ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.txt`が利用されます。
+
+学習済みモデルファイル名が省略された場合、学習済みモデルファイルが`{Groongaのデータベースパス}+_w2v.bin`に出力されます。
+
+* 入力形式
+
+| arg        | description | default      |
+|:-----------|:------------|:-------------|
+| train_file     | 学習用テキストファイル(一時ファイル) |  `{groonga_db}_w2v.txt` |
+| output_file   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | save_vovab_file    | save_vocab_file | NULL |
 | read_vovab_file    | read_vocab_file | NULL |
 | threads    | 学習時のスレッド数 | 12 |
@@ -41,10 +70,6 @@ Groongaのカラムに格納されたテキストから学習用のファイル�
 | is_output_file   | classes>=1でk-meansの出力結果をファイルとする場合1 | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
 
-オプションは、通常のGroongaのコマンドと同様に上記の順番で入力する場合は省略することができます。  
-上記の順番以外で入力したい場合や省略したい場合は、``--``を先頭につけます。  
-たとえば、``word2vec_train --table Logs --column log``
-
 * 出力形式  
 JSON
 
@@ -53,16 +78,17 @@ JSON
 * 実行例
 
 ```
-> word2vec_train Logs log --debug 2
+> word2vec_train
 Vocab size: 976190
 Words in train file: 219474851
 Alpha: 0.000100  Progress: 99.60%  Words/thread/sec: 7.07k
+[[0,0.0,0.0],true]
 ```
 
 k-meansクラスタリングの出力例
 
 ```
-word2vec_train Entries title,tag,tags --min_count 1 --classes 3
+word2vec_train --min_count 1 --classes 3
 [
   [
     0,
@@ -110,7 +136,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
   ]
 ```
 
-### word2vec_distance
+### ```word2vec_distance```
 
 入力した単語とベクトル距離が近い単語が出力されます。類似語らしきものを取得することができます。  
 "単語A + 単語B"など、スペースと+-で単語の足し引きをさせることができます。
@@ -195,7 +221,8 @@ _keyに単語、_value(_scoreではない)にコサイン距離が出力され�
 sentence vectorの例
 
 ```
-word2vec_train Entries title,tag,tags --min_count 1 --cbow 1 --sentence_vectors 1
+dump_to_train_file Entries title,tag,tags --sentence_vectors 1
+word2vec_train --min_count 1 --cbow 1 --sentence_vectors 1
 word2vec_distance "doc_id:2" --sentence_vectors 1 --table Entries --column _id,title,tag
 [
   [
@@ -235,7 +262,7 @@ word2vec_distance "doc_id:2" --sentence_vectors 1 --table Entries --column _id,t
 ]
 ```
 
-### word2vec_load
+### ```word2vec_load```
 
 学習済みモデルファイルをロードします。
 
@@ -261,7 +288,7 @@ JSON (true or false)
 [[0,1403598361.75615,4.22779297828674],true]
 ```
 
-### word2vec_unload
+### ```word2vec_unload```
 
 ロードしたモデルファイルをアンロードします。
 
@@ -279,7 +306,7 @@ JSON (true)
 ```
 
 ## 関数
-### QueryExpanderWord2vec
+### ```QueryExpanderWord2vec```
 word2vec_distanceを使って動的にクエリ展開をします。
 
 * 実行例

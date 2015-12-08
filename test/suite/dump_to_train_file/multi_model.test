@@ -1,0 +1,27 @@
+plugin_register word2vec/word2vec
+
+table_create Tags TABLE_PAT_KEY ShortText
+
+table_create Entries TABLE_NO_KEY
+column_create Entries title COLUMN_SCALAR ShortText
+column_create Entries tag COLUMN_SCALAR Tags
+column_create Entries tags COLUMN_VECTOR Tags
+
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+
+dump_to_train_file Entries title,tags --train_file "db/db_w2v.txt"
+dump_to_train_file Entries title,tag --train_file "db/db2_w2v.txt"
+word2vec_train --min_count 1 --train_file "db/db_w2v.txt" --output_file "db/db_w2v.bin"
+word2vec_train --min_count 1 --train_file "db/db2_w2v.txt" --output_file "db/db2_w2v.bin"
+word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
+word2vec_distance "Library" --file_path "db/db2_w2v.bin"
+word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
+word2vec_distance "Library" --file_path "db/db2_w2v.bin"
