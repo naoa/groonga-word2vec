@@ -1841,7 +1841,6 @@ filter_and_add_vector_element(grn_ctx *ctx,
                               int i,
                               const char **column_value_p,
                               grn_obj *get_buf,
-                              grn_obj *out_buf,
                               train_option option)
 {
   if (option.normalizer_len) {
@@ -2005,11 +2004,10 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
     /* output and filter column */
     if (cur) {
       grn_id id;
-      grn_obj column_value, get_buf, out_buf;
+      grn_obj column_value, get_buf;
       grn_obj vbuf;
       GRN_TEXT_INIT(&column_value, 0);
       GRN_TEXT_INIT(&get_buf, 0);
-      GRN_TEXT_INIT(&out_buf, 0);
       GRN_TEXT_INIT(&vbuf, GRN_OBJ_VECTOR);
 
       while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
@@ -2033,7 +2031,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               column_value_p = get_reference_vector_value(ctx, &column_value, s, &get_buf, &record);
               filter_and_add_vector_element(ctx, &vbuf, i,
                                             &column_value_p,
-                                            &get_buf, &out_buf,
+                                            &get_buf,
                                             option);
            }
             GRN_OBJ_FIN(ctx, &record);
@@ -2055,7 +2053,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
                 column_value_p = GRN_TEXT_VALUE(&get_buf);
                 filter_and_add_vector_element(ctx, &vbuf, i,
                                               &column_value_p,
-                                              &get_buf, &out_buf,
+                                              &get_buf,
                                               option);
               }
               GRN_OBJ_FIN(ctx, &record);
@@ -2070,7 +2068,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
               column_value_p = GRN_TEXT_VALUE(&get_buf);
               filter_and_add_vector_element(ctx, &vbuf, i,
                                             &column_value_p,
-                                            &get_buf, &out_buf,
+                                            &get_buf,
                                             option);
             }
           }
@@ -2097,7 +2095,6 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
       }
       grn_obj_unlink(ctx, &column_value);
       grn_obj_unlink(ctx, &get_buf);
-      grn_obj_unlink(ctx, &out_buf);
       grn_obj_unlink(ctx, &vbuf);
       grn_table_cursor_close(ctx, cur);
       if (result) {
