@@ -1850,6 +1850,14 @@ filter_and_add_vector_element(grn_ctx *ctx,
                                 option.normalizer_len,
                                 get_buf);
   }
+
+  if (option.mecab_option != NULL && option.is_mecab[i] &&
+    strlen(*column_value_p) > 0){
+    *column_value_p = sparse(ctx, *column_value_p, option.mecab_option);
+    right_trim((char *)*column_value_p, '\n');
+    right_trim((char *)*column_value_p, ' ');
+  }
+
   if (option.input_filter != NULL || option.is_phrase[i] || option.is_remove_symbol[i]) {
     string s = *column_value_p;
     if (option.input_filter != NULL) {
@@ -1857,7 +1865,7 @@ filter_and_add_vector_element(grn_ctx *ctx,
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_remove_symbol[i]) {
-      re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([0-9,.;:&^/\\-#'\"()])", " ");
+      re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([0-9,.;:&^/\\-#'\"()、。【】「」~・])", " ");
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_phrase[i]) {
