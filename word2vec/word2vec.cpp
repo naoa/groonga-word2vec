@@ -2343,8 +2343,8 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 }
 
 static grn_obj *
-func_query_expander_word2ec(grn_ctx *ctx, int nargs, grn_obj **args,
-                            grn_user_data *user_data)
+func_query_expander_word2vec(grn_ctx *ctx, int nargs, grn_obj **args,
+                             grn_user_data *user_data)
 {
   grn_rc rc = GRN_END_OF_DATA;
   grn_id id;
@@ -2475,7 +2475,7 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,
-                  func_query_expander_word2ec, NULL, NULL,
+                  func_query_expander_word2vec, NULL, NULL,
                   0, NULL);
 
   return ctx->rc;
