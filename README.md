@@ -126,7 +126,8 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 |:-----------|:------------|:-------------|
 | term      | 入力単語 or 単語式 (e.g. 単語A + 単語B - 単語C) | NULL |
 | offset      | 結果出力のオフセット | 0 | 
-| limit     | 結果出力の上限件数 | 10 |
+| limit     | 結果出力の上限件数 n_sort以上の数は出力されない | 10 |
+| n_sort     | ソートバッファのサイズ 増やせば増やすほど遅くなる | 40 |
 | threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
