@@ -2074,8 +2074,7 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           }
         }
         if (sentence_vectors) {
-          fprintf(fo, DOC_ID_PREFIX);
-          fprintf(fo, "%d ", id);
+          fprintf(fo, "%.*s%d ", DOC_ID_PREFIX_LEN, DOC_ID_PREFIX, id);
         }
         for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
           const char *value;
