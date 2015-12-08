@@ -710,10 +710,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
     array_len = split(result_array, NELEMS(result_array), term, " ");
     for (unsigned int i = 0; i < array_len; i++) {
-      if (i == 0) {
-        strcpy(st1, result_array[i]);
-        continue;
-      }
       if (result_array[i][0] == '+'){
         op[op_row] = '+';
         op_row++;
@@ -722,7 +718,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         op[op_row] = '-';
         op_row++;
       } else {
-        strcat(st1, result_array[i]);
+        if (i == 0) {
+          strcpy(st1, result_array[i]);
+        } else {
+          strcat(st1, result_array[i]);
+        }
         if ( i < array_len - 1) {
           strcat(st1, " ");
         }
