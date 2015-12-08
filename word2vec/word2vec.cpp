@@ -1,5 +1,5 @@
 /*
-  Copyright(C) 2014 Naoya Murakami <naoya@createfield.com>
+  Copyright(C) 2014-2015 Naoya Murakami <naoya@createfield.com>
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -70,6 +70,9 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 
 #define DEFAULT_SORTBY          "-_value"
 #define DEFAULT_OUTPUT_COLUMNS  "_id,_value"
+
+#define DOC_ID_PREFIX "doc_id:"
+#define DOC_ID_PREFIX_LEN 7
 
 typedef struct {
   double score;
@@ -962,7 +965,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           break;
         }
         if (is_sentence_vectors) {
-          if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
+          if (strncmp(&load_vocab[model_index][c * max_w], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
             break;
           }
         }
@@ -995,16 +998,13 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) {
     if (strlen(bestw[a]) > 0) {
       if (is_sentence_vectors && table_len) {
-        char *doc_id;
-        grn_id int_doc_id = 0;
-        doc_id = bestw[a];
-        /* forward to "doc_id:" */
-        for (int r = 0; r < 7; r++) {
-          doc_id++;
-        }
-        int_doc_id = atoi(doc_id);
-        if (int_doc_id) {
-          add_record_value(ctx, res, &int_doc_id, sizeof(grn_id), bestd[a]);
+        char *doc_id_p;
+        grn_id doc_id = 0;
+        doc_id_p = bestw[a];
+        doc_id_p += DOC_ID_PREFIX_LEN;
+        doc_id = atoi(doc_id_p);
+        if (doc_id) {
+          add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
         }
       } else {
         add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
@@ -2003,8 +2003,8 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
           }
         }
         if (sentence_vectors) {
-          fprintf(fo, "doc_id:%d", id);
-          fprintf(fo, " ");
+          fprintf(fo, DOC_ID_PREFIX);
+          fprintf(fo, "%d ", id);
         }
         for (t = 0; t < grn_vector_size(ctx, &vbuf); t++) {
           const char *value;
