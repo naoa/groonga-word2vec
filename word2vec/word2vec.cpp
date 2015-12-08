@@ -67,6 +67,8 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define SPLIT_BUF_SIZE 4096
 #define NELEMS(a) (sizeof(a) / sizeof(a[0]))
 
+#define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
+
 #define DEFAULT_SORTBY          "-_score"
 #define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
@@ -88,6 +90,56 @@ typedef struct {
   grn_bool is_remove_symbol[20];
   int weights[20];
 } train_option;
+
+
+static void
+calc_edit_distance(grn_ctx *ctx, grn_obj *res, const char *term)
+{
+  grn_obj *var;
+  grn_obj *expr;
+  GRN_EXPR_CREATE_FOR_QUERY(ctx, res, expr, var);
+  if (expr) {
+    grn_table_cursor *tc;
+    grn_obj gterm;
+    GRN_TEXT_INIT(&gterm, 0);
+    GRN_TEXT_SET(ctx, &gterm, term, strlen(term));
+    grn_obj *score = grn_obj_column(ctx, res,
+                                    GRN_COLUMN_NAME_SCORE,
+                                    GRN_COLUMN_NAME_SCORE_LEN);
+    grn_obj *key = grn_obj_column(ctx, res,
+                                  GRN_COLUMN_NAME_KEY,
+                                  GRN_COLUMN_NAME_KEY_LEN);
+    grn_expr_append_obj(ctx, expr,
+                        score,
+                        GRN_OP_GET_VALUE, 1);
+    grn_expr_append_obj(ctx, expr,
+                        grn_ctx_get(ctx, CONST_STR_LEN("edit_distance")),
+                        GRN_OP_PUSH, 1);
+    grn_expr_append_obj(ctx, expr,
+                        key,
+                        GRN_OP_GET_VALUE, 1);
+    grn_expr_append_const(ctx, expr, &gterm, GRN_OP_PUSH, 1);
+    grn_expr_append_op(ctx, expr, GRN_OP_CALL, 2);
+    grn_expr_append_op(ctx, expr, GRN_OP_PLUS_ASSIGN, 2);
+
+    if ((tc = grn_table_cursor_open(ctx, res, NULL, 0, NULL, 0, 0, -1, GRN_CURSOR_BY_ID))) {
+      grn_id id;
+      while ((id = grn_table_cursor_next(ctx, tc)) != GRN_ID_NIL) {
+        GRN_RECORD_SET(ctx, var, id);
+        grn_expr_exec(ctx, expr, 0);
+      }
+      grn_table_cursor_close(ctx, tc);
+
+    }
+    grn_obj_unlink(ctx, score);
+    grn_obj_unlink(ctx, key);
+    grn_obj_unlink(ctx, expr);
+    grn_obj_unlink(ctx, &gterm);
+  } else {
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+       "[word2vec_distance] error on building expr. for calcurating edit distance");
+  }
+}
 
 static void
 add_record(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score) {
@@ -572,6 +624,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   int expander_mode = 0;
   grn_bool is_phrase = GRN_FALSE;
   grn_bool is_sentence_vectors = GRN_FALSE;
+  unsigned int edit_distance = 0;
   char *table_name = NULL;
   unsigned int table_len = 0;
   char *column_names = NULL;
@@ -652,6 +705,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "is_phrase", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     is_phrase = atoi(GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "edit_distance", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    edit_distance = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -757,7 +814,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
-  if (b == 0) return NULL;
+  if (b == 0) {
+    return NULL;
+  }
   if (cn == 1) {
     for (a = 0; a < size[model_index]; a++) vec[a] = 0;
     for (b = 0; b < cn; b++) {
@@ -787,9 +846,19 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
     if (g_table) {
       res = grn_table_create(ctx, NULL, 0, NULL,
-                                  GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
-                                  g_table, NULL);
+                             GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
+                             g_table, NULL);
+      if (!res) {
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
+                       "[word2vec_distance] couldn't create temp table");
+        grn_obj_unlink(ctx, g_table);
+        return NULL;
+      }
     }
+  } else if (edit_distance) {
+    res = grn_table_create(ctx, NULL, 0, NULL,
+                           GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
+                           grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), NULL);
     if (!res) {
       GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                      "[word2vec_distance] couldn't create temp table");
@@ -852,6 +921,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           if (atoi(doc_id)) {
             add_doc_id(ctx, res, atoi(doc_id),  bestd[a]);
           }
+        } else if(edit_distance && res) {
+          add_record(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
         }
         break;
       }
@@ -921,6 +992,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   } else {
     if (is_sentence_vectors && res) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
+    } else if (edit_distance && res) {
+      calc_edit_distance(ctx, res, st[0]);
+      output(ctx, res, offset, limit, "_key,_score", strlen("_key,_score"), "_score", strlen("_score"));
     } else {
       grn_ctx_output_array_open(ctx, "RESULT", 2);
       grn_ctx_output_array_open(ctx, "INPUT_WORD", 2);
@@ -949,6 +1023,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       grn_ctx_output_array_close(ctx);
     }
   }
+
   if (res) {
     grn_obj_close(ctx, res);
     res = NULL;
@@ -2252,11 +2327,12 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[9], "file_path", -1);
   grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
   grn_plugin_expr_var_init(ctx, &vars[11], "is_phrase", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 16, vars);
+  grn_plugin_expr_var_init(ctx, &vars[12], "edit_distance", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 17, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

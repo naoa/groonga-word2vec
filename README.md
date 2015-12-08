@@ -135,6 +135,7 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
+| edit_distance   | 出力結果を編集距離の近い順にする合1  最終スコアは編集距離で上書きされる | 0 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) 2:tsv query1\tquery2 | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
