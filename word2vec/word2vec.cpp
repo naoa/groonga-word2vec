@@ -94,6 +94,7 @@ typedef struct {
   grn_bool is_phrase[MAX_COLUMNS];
   grn_bool is_mecab[MAX_COLUMNS];
   grn_bool is_remove_symbol[MAX_COLUMNS];
+  grn_bool is_remove_alpha[MAX_COLUMNS];
   int weights[MAX_COLUMNS];
 } train_option;
 
@@ -1858,7 +1859,7 @@ filter_and_add_vector_element(grn_ctx *ctx,
     right_trim((char *)*column_value_p, ' ');
   }
 
-  if (option.input_filter != NULL || option.is_phrase[i] || option.is_remove_symbol[i]) {
+  if (option.input_filter != NULL || option.is_phrase[i] || option.is_remove_symbol[i] || option.is_remove_alpha[i]) {
     string s = *column_value_p;
     if (option.input_filter != NULL) {
       re2::RE2::GlobalReplace(&s, option.input_filter, " ");
@@ -1866,6 +1867,10 @@ filter_and_add_vector_element(grn_ctx *ctx,
     }
     if (option.is_remove_symbol[i]) {
       re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([0-9,.;:&^/\\-#'\"()、。【】「」~・])", " ");
+      re2::RE2::GlobalReplace(&s, "[ ]+", " ");
+    }
+    if (option.is_remove_alpha[i]) {
+      re2::RE2::GlobalReplace(&s, "([a-zA-Z]+)", " ");
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_phrase[i]) {
@@ -1944,6 +1949,12 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
         right_trim(column_name_array[i], '$');
       } else {
         option.is_remove_symbol[i] = GRN_FALSE;
+      }
+      if (column_name_array[i][strlen(column_name_array[i]) - 1] == '@') {
+        option.is_remove_alpha[i] = GRN_TRUE;
+        right_trim(column_name_array[i], '@');
+      } else {
+        option.is_remove_alpha[i] = GRN_FALSE;
       }
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == '_') {
         option.is_phrase[i] = GRN_TRUE;
