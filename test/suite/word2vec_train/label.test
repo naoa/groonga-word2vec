@@ -13,5 +13,5 @@ load --table Entries
 {"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
 ]
 
-word2vec_train Entries title[tag:],tag,tags --min_count 1
+word2vec_train Entries title[tag:],tag,tags --min_count 1 --hs 0
 word2vec_distance "tag:fulltextsearch"
