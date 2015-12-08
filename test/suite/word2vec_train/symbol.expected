@@ -35,7 +35,7 @@ word2vec_distance "Server" --limit 40
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

@@ -35,7 +35,7 @@ word2vec_distance "Groonga + Database"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

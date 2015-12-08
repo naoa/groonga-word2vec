@@ -127,24 +127,24 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | term      | 入力単語 or 単語式 (e.g. 単語A + 単語B - 単語C) | NULL |
 | offset      | 結果出力のオフセット | 0 | 
 | limit     | 結果出力の上限件数 | 10 |
-| threshold     | 結果出力の閾値、1以下の小数を指定 | -1 |
+| threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
 | white_term_filter   | 出力をさせる単語にマッチする正規表現(完全一致) | NULL |
-| output_filter   | 出力結果から除去したい文字列の正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
-| edit_distance   | 出力結果を編集距離の近い順にする合1  最終スコアは編集距離で上書きされる | 0 |
+| edit_distance   | 出力結果を編集距離の近い順にする場合1  編集距離は_scoreにセットされる | 0 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ<BR>1:クエリ展開 ((query1) OR (query2)) | 0 |
 | sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
-| column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  カラムを出力する場合、最終の_scoreの見かけ上の表示は0になる | _id,_score |
-| sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_score |
+| column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可 | _id,_value |
+| sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_value |
 
 * 出力形式  
 JSON
 
+_keyに単語、_value(_scoreではない)にコサイン距離が出力されます。
 通常のGroongaコマンドと同様に、--output_typeによるjson、xml、tsvの出力指定も可能です。
 
 * 実行例
@@ -167,7 +167,7 @@ JSON
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

@@ -35,7 +35,7 @@ word2vec_distance "tag:fulltextsearch"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

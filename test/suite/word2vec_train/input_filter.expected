@@ -35,7 +35,7 @@ word2vec_distance "Groo"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

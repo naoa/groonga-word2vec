@@ -35,7 +35,7 @@ word2vec_distance "doc_id:1"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

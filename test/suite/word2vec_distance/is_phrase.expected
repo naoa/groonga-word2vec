@@ -35,7 +35,7 @@ word2vec_distance "Groonga Database" --is_phrase 1
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

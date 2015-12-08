@@ -41,7 +41,7 @@ word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -88,7 +88,7 @@ word2vec_distance "Library" --file_path "db/db2_w2v.bin"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -127,7 +127,7 @@ word2vec_distance "Groonga" --file_path "db/db_w2v.bin"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -174,7 +174,7 @@ word2vec_distance "Library" --file_path "db/db2_w2v.bin"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],

@@ -68,8 +68,8 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 
 #define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
 
-#define DEFAULT_SORTBY          "-_score"
-#define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
+#define DEFAULT_SORTBY          "-_value"
+#define DEFAULT_OUTPUT_COLUMNS  "_id,_value"
 
 typedef struct {
   double score;
@@ -160,7 +160,8 @@ calc_edit_distance(grn_ctx *ctx, grn_obj *res, const char *term)
 }
 
 static void
-add_record(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score) {
+add_record(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score)
+{
   void *value;
   if (grn_hash_add(ctx, (grn_hash *)res, word, word_length, &value, NULL)) {
     grn_rset_recinfo *ri;
@@ -170,7 +171,22 @@ add_record(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score
 }
 
 static void
-add_doc_id(grn_ctx *ctx, grn_obj *res, grn_id doc_id, double score) {
+add_record_value(grn_ctx *ctx, grn_obj *res, void *word, int word_length, double score)
+{
+  grn_id id;
+  id = grn_table_add(ctx, res, word, word_length, NULL);
+  if (id) {
+    grn_obj value;
+    GRN_FLOAT_INIT(&value, 0);
+    GRN_FLOAT_SET(ctx, &value, score);
+    grn_obj_set_value(ctx, res, id, &value, GRN_OBJ_SET);
+    grn_obj_unlink(ctx, &value);
+  }
+}
+
+static void
+add_doc_id(grn_ctx *ctx, grn_obj *res, grn_id doc_id, double score)
+{
   void *value;
   if (grn_hash_add(ctx, (grn_hash *)res, &doc_id, sizeof(grn_id), &value, NULL)) {
     grn_rset_recinfo *ri;
@@ -623,9 +639,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 {
   char st1[max_size];
   const long long N = 40; // number of closest words that will be shown
-  char bestw[N][max_size];
   char *st[100];
-  float dist, len, bestd[N], vec[max_size];
+  float dist, len, vec[max_size];
+  char **bestw;
+  float *bestd;
   long long a, b, c, d, cn, bi[100];
   char op[100] = {'+'};
   unsigned int end;
@@ -637,7 +654,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   int normalizer_len = 14;
   char *term_filter = NULL;
   char *white_term_filter = NULL;
-  char *output_filter = NULL;
   char *mecab_option = NULL;
   int expander_mode = 0;
   grn_bool is_phrase = GRN_FALSE;
@@ -704,10 +720,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "white_term_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     white_term_filter = GRN_TEXT_VALUE(var);
-  }
-  var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
-  if (GRN_TEXT_LEN(var) != 0) {
-    output_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -827,28 +839,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       return NULL;
     }
   }
-
   if (b == 0) {
     return NULL;
-  }
-  if (cn == 1) {
-    for (a = 0; a < size[model_index]; a++) vec[a] = 0;
-    for (b = 0; b < cn; b++) {
-      if (bi[b] == -1) continue;
-      for (a = 0; a < size[model_index]; a++) vec[a] += M[model_index][a + bi[b] * size[model_index]];
-    }
-  } else {
-    for (a = 0; a < size[model_index]; a++) vec[a] = 0;
-    for (a = 0; a < size[model_index]; a++) {
-      for (b = 0; b < cn; b++) {
-        if (bi[b] == -1) continue;
-        if (op[b] == '-') {
-          vec[a] -= M[model_index][a + bi[b] * size[model_index]];
-        } else {
-          vec[a] += M[model_index][a + bi[b] * size[model_index]];
-        }
-      }
-    }
   }
 
   if ((is_sentence_vectors && table_len)) {
@@ -869,16 +861,42 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         return NULL;
       }
     }
-  } else if (edit_distance) {
+  } else {
     res = grn_table_create(ctx, NULL, 0, NULL,
                            GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
-                           grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), NULL);
+                           grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), grn_ctx_at(ctx, GRN_DB_FLOAT));
     if (!res) {
       GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                      "[word2vec_distance] couldn't create temp table");
       return NULL;
     }
   }
+
+  if (cn == 1) {
+    for (a = 0; a < size[model_index]; a++) vec[a] = 0;
+    for (b = 0; b < cn; b++) {
+      if (bi[b] == -1) continue;
+      for (a = 0; a < size[model_index]; a++) vec[a] += M[model_index][a + bi[b] * size[model_index]];
+    }
+  } else {
+    for (a = 0; a < size[model_index]; a++) vec[a] = 0;
+    for (a = 0; a < size[model_index]; a++) {
+      for (b = 0; b < cn; b++) {
+        if (bi[b] == -1) continue;
+        if (op[b] == '-') {
+          vec[a] -= M[model_index][a + bi[b] * size[model_index]];
+        } else {
+          vec[a] += M[model_index][a + bi[b] * size[model_index]];
+        }
+      }
+    }
+  }
+
+  bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
+  for (a = 0; a < N; a++) {
+    bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_size * sizeof(char));
+  }
+  bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
 
   len = 0;
   for (a = 0; a < size[model_index]; a++) len += vec[a] * vec[a];
@@ -925,18 +943,20 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         }
         bestd[a] = dist;
         strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
-        if (is_sentence_vectors && res) {
+        if (is_sentence_vectors && table_len) {
           char *doc_id;
+          grn_id int_doc_id = 0;
           doc_id = bestw[a];
           /* forward to "doc_id:" */
           for (int r = 0; r < 7; r++) {
             doc_id++;
           }
-          if (atoi(doc_id)) {
-            add_doc_id(ctx, res, atoi(doc_id),  bestd[a]);
+          int_doc_id = atoi(doc_id);
+          if (int_doc_id) {
+            add_record_value(ctx, res, &int_doc_id, sizeof(grn_id), bestd[a]);
           }
-        } else if(edit_distance && res) {
-          add_record(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
+        } else {
+          add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
         }
         total++;
         break;
@@ -944,7 +964,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
-  if (offset + limit > total) {
+  if (offset + limit > N) {
+    end = N;
+  } else if (offset + limit > total) {
     end = total;
   } else {
     end = offset + limit;
@@ -957,11 +979,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_TEXT_PUTS(ctx, &buf, "((");
     GRN_TEXT_PUTS(ctx, &buf, st1);
     for (a = offset; a < end; a++) {
-      if (output_filter != NULL) {
-        string s = bestw[a];
-        re2::RE2::GlobalReplace(&s, output_filter, "");
-        strcpy(bestw[a],s.c_str());
-      }
       if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
         if ( a < end) {
           GRN_TEXT_PUTS(ctx, &buf, ") OR (");
@@ -970,7 +987,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           GRN_TEXT_PUTS(ctx, &buf, bestw[a]);
         }
       } else {
-        if (end < total) {
+        if (end < N && end < total) {
           end++;
         }
       }
@@ -979,33 +996,24 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_obj(ctx, &buf, NULL);
     grn_obj_unlink(ctx, &buf);
   } else {
-    if (is_sentence_vectors && res) {
+    if (is_sentence_vectors && table_len) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
-    } else if (edit_distance && res) {
+    } else if (edit_distance) {
       calc_edit_distance(ctx, res, st[0]);
       output(ctx, res, offset, limit, "_key,_score", strlen("_key,_score"), "_score", strlen("_score"));
     } else {
-      output_header(ctx, total);
-      for (a = offset; a < end; a++) {
-        if (output_filter != NULL) {
-          string s = bestw[a];
-          re2::RE2::GlobalReplace(&s, output_filter, "");
-          strcpy(bestw[a],s.c_str());
-        }
-        if (strlen(bestw[a]) > 0 && bestd[a] != 0) {
-          grn_ctx_output_array_open(ctx, "HIT", 2);
-          grn_ctx_output_cstr(ctx, bestw[a]);
-          grn_ctx_output_float(ctx, bestd[a]);
-          grn_ctx_output_array_close(ctx);
-        } else {
-          if (end < total) {
-            end++;
-          }
-        }
-      }
-      grn_ctx_output_array_close(ctx);
+      output(ctx, res, offset, limit, "_key,_value", strlen("_key,_value"), "-_value", strlen("-_value"));
     }
   }
+
+  for (a = 0; a < N; a++) {
+    GRN_PLUGIN_FREE(ctx, bestw[a]);
+    bestw[a] = NULL;
+  }
+  GRN_PLUGIN_FREE(ctx, bestw);
+  bestw = NULL;
+  GRN_PLUGIN_FREE(ctx, bestd);
+  bestd = NULL;
 
   if (res) {
     grn_obj_close(ctx, res);
@@ -1706,7 +1714,7 @@ static void SaveKmeansClasses(grn_ctx *ctx, grn_bool is_output_file) {
                                 grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), NULL))) {
 
       for (a = 0; a < vocab_size; a++) {
-        add_record(ctx, res, vocab[a].word, strlen(vocab[a].word), cl[a]);
+        add_record_value(ctx, res, vocab[a].word, strlen(vocab[a].word), cl[a]);
       }
     }
     output(ctx, res, 0, -1, "_key,_score", strlen("_key,_score"), "-_score", strlen("-_score"));
@@ -2305,17 +2313,16 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[4], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "term_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[6], "white_term_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "output_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "file_path", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "is_phrase", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "edit_distance", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 17, vars);
+  grn_plugin_expr_var_init(ctx, &vars[7], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "file_path", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "expander_mode", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "is_phrase", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "edit_distance", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 16, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

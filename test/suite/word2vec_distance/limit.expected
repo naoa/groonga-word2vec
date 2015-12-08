@@ -35,7 +35,7 @@ word2vec_distance "Groonga" --limit 3
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
