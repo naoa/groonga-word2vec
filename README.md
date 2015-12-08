@@ -142,6 +142,12 @@ word2vec_train Entries title,tag,tags --min_count 1 --classes 3
 | column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可 | _id,_value |
 | sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_value |
 
+* 上限
+```
+const long long max_size = 2000; // max length of strings(入力文字列)
+const long long max_w = 255; // max length of vocabulary entries
+```
+
 * 出力形式  
 JSON
 

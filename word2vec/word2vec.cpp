@@ -525,7 +525,7 @@ normalize(grn_ctx *ctx, grn_obj *buf,
 /* distance.c */
 
 const long long max_size = 2000; // max length of strings
-const long long max_w = 50; // max length of vocabulary entries
+const long long max_w = 255; // max length of vocabulary entries
 
 #define MAX_MODEL 20
 
