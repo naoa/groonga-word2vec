@@ -9,7 +9,7 @@ column_create Entries tags COLUMN_VECTOR Tags
 
 load --table Entries
 [
-{"title": "今日は＊雨だ1\",.;:&^/-#'()なぁ", "tag": "Library"},
+{"title": "今日は＊雨だ1\",.;:&^/-#'()[]なぁ", "tag": "Library"},
 {"title": "明日は<b>晴れ</b>だなぁ", "tag": "Server"}
 ]
 

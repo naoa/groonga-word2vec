@@ -1866,7 +1866,7 @@ filter_and_add_vector_element(grn_ctx *ctx,
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_remove_symbol[i]) {
-      re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([0-9,.;:&^/\\-−#'\"()、。【】「」~・])", " ");
+      re2::RE2::GlobalReplace(&s, "(<[^>]*>)|([0-9,.;:&^/\\-−#'\"()\\[\\]、。【】「」~・])", " ");
       re2::RE2::GlobalReplace(&s, "[ ]+", " ");
     }
     if (option.is_remove_alpha[i]) {
