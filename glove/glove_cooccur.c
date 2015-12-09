@@ -38,6 +38,7 @@
 #define SEED 1159241
 #define HASHFN bitwisehash
 
+#define MAX_STRING 1000
 static const int MAX_STRING_LENGTH = 1000;
 typedef double real;
 
@@ -67,6 +68,8 @@ int window_size = 15; // default context window size
 int symmetric = 1; // 0: asymmetric, 1: symmetric
 real memory_limit = 3; // soft limit, in gigabytes, used to estimate optimal array sizes
 char *vocab_file, *file_head;
+char input_file[MAX_STRING];
+char output_file[MAX_STRING];
 
 /* Efficient string comparison */
 static int scmp( char *s1, char *s2 ) {
@@ -237,7 +240,7 @@ static int merge_files(int num) {
     FILE **fid, *fout;
     fid = malloc(sizeof(FILE) * num);
     pq = malloc(sizeof(CRECID) * num);
-    fout = stdout;
+    fout = fopen(output_file, "wb");
     if(verbose > 1) fprintf(stderr, "Merging cooccurrence files: processed 0 lines.");
     
     /* Open all files and add first entry of each to priority queue */
@@ -282,6 +285,7 @@ static int merge_files(int num) {
         remove(filename);
     }
     fprintf(stderr,"\n");
+    fclose(fout);
     return 0;
 }
 
@@ -334,7 +338,7 @@ static int get_cooccurrence() {
         return 1;
     }
     
-    fid = stdin;
+    fid = fopen(input_file, "r");
     sprintf(format,"%%%ds",MAX_STRING_LENGTH);
     sprintf(filename,"%s_%04d.bin",file_head, fidcounter);
     foverflow = fopen(filename,"w");
@@ -427,9 +431,43 @@ static GNUC_UNUSED int find_arg(char *str, int argc, char **argv) {
     return -1;
 }
 
+
+static void
+get_input_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.txt");
+}
+
+static void
+get_output_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.cooccur");
+}
+
+static void
+get_vocab_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.vocab");
+}
+
 static grn_obj *
-command_glove_cooccurrence(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
-                           grn_user_data *user_data)
+command_glove_cooccurr(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                       grn_user_data *user_data)
 {
     grn_obj *var;
 
@@ -437,19 +475,34 @@ command_glove_cooccurrence(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_
     vocab_file = malloc(sizeof(char) * MAX_STRING_LENGTH);
     file_head = malloc(sizeof(char) * MAX_STRING_LENGTH);
 
+    var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(input_file, GRN_TEXT_VALUE(var));
+        input_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_input_file_path(ctx, input_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "output_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(output_file, GRN_TEXT_VALUE(var));
+        output_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_output_file_path(ctx, output_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(vocab_file, GRN_TEXT_VALUE(var));
+        vocab_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_vocab_file_path(ctx, vocab_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "overflow_file", -1);
     var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
     if (GRN_TEXT_LEN(var) != 0) verbose = atoi(GRN_TEXT_VALUE(var));
     var = grn_plugin_proc_get_var(ctx, user_data, "symmetric", -1);
     if (GRN_TEXT_LEN(var) != 0) symmetric = atoi(GRN_TEXT_VALUE(var));
     var = grn_plugin_proc_get_var(ctx, user_data, "window_size", -1);
     if (GRN_TEXT_LEN(var) != 0) window_size = atoi(GRN_TEXT_VALUE(var));
-    var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
-    if (GRN_TEXT_LEN(var) != 0) {
-        strcpy(vocab_file, GRN_TEXT_VALUE(var));
-        vocab_file[GRN_TEXT_LEN(var)] = '\0';
-    } else {
-        strcpy(vocab_file, (char *)"vocab.txt");
-    }
     var = grn_plugin_proc_get_var(ctx, user_data, "overflow_file", -1);
     if (GRN_TEXT_LEN(var) != 0) {
         strcpy(file_head, GRN_TEXT_VALUE(var));
@@ -473,7 +526,7 @@ command_glove_cooccurrence(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_
     var = grn_plugin_proc_get_var(ctx, user_data, "overflow_length", -1);
     if (GRN_TEXT_LEN(var) != 0) overflow_length = atoll(GRN_TEXT_VALUE(var));
     
-    grn_ctx_output_bool(ctx, get_cooccurrence());
+    grn_ctx_output_int32(ctx, get_cooccurrence());
     return NULL;
 }
 
@@ -486,16 +539,18 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[8];
-  grn_plugin_expr_var_init(ctx, &vars[0], "verbose", -1);
-  grn_plugin_expr_var_init(ctx, &vars[1], "symmetric", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "window_size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[3], "vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[4], "overflow_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[5], "memory", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "max_product", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "overflow_length", -1);
-  grn_plugin_command_create(ctx, "glove_cooccurrence", -1, command_glove_cooccurrence, 8, vars);
+  grn_expr_var vars[10];
+  grn_plugin_expr_var_init(ctx, &vars[0], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "symmetric", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "window_size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "overflow_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "memory", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "max_product", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "overflow_length", -1);
+  grn_plugin_command_create(ctx, "glove_cooccurr", -1, command_glove_cooccurr, 10, vars);
   return ctx->rc;
 }
 

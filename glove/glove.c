@@ -283,6 +283,52 @@ static GNUC_UNUSED int find_arg(char *str, int argc, char **argv) {
     return -1;
 }
 
+
+static void
+get_input_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.shuffle");
+}
+
+static void
+get_save_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv");
+}
+
+
+static void
+get_vocab_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.vocab");
+}
+
+static void
+get_gradsq_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.gradsq");
+}
+
 static grn_obj *
 command_glove_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
                     grn_user_data *user_data)
@@ -295,7 +341,41 @@ command_glove_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **a
     input_file = malloc(sizeof(char) * MAX_STRING_LENGTH);
     save_W_file = malloc(sizeof(char) * MAX_STRING_LENGTH);
     save_gradsq_file = malloc(sizeof(char) * MAX_STRING_LENGTH);
-    
+
+    var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(input_file, GRN_TEXT_VALUE(var));
+        input_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_input_file_path(ctx, input_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "save_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(save_W_file, GRN_TEXT_VALUE(var));
+        save_W_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_save_file_path(ctx, save_W_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(vocab_file, GRN_TEXT_VALUE(var));
+        vocab_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_vocab_file_path(ctx, vocab_file);
+    }
+
+    var = grn_plugin_proc_get_var(ctx, user_data, "save_gradsq", -1);
+    if (GRN_TEXT_LEN(var) != 0) save_gradsq = atoi(GRN_TEXT_VALUE(var));
+
+    var = grn_plugin_proc_get_var(ctx, user_data, "gradsq_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(save_gradsq_file, GRN_TEXT_VALUE(var));
+        save_gradsq_file[GRN_TEXT_LEN(var)] = '\0';
+        save_gradsq = 1;
+    } else if (save_gradsq > 0) {
+        get_gradsq_file_path(ctx, save_gradsq_file);
+    }
+
     var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
     if (GRN_TEXT_LEN(var) != 0) verbose = atoi(GRN_TEXT_VALUE(var));
     var = grn_plugin_proc_get_var(ctx, user_data, "vector_size", -1);
@@ -317,43 +397,13 @@ command_glove_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **a
     var = grn_plugin_proc_get_var(ctx, user_data, "model", -1);
     if (GRN_TEXT_LEN(var) != 0) model = atoi(GRN_TEXT_VALUE(var));
     if(model != 0 && model != 1) model = 2;
-    var = grn_plugin_proc_get_var(ctx, user_data, "save_gradsq", -1);
-    if (GRN_TEXT_LEN(var) != 0) save_gradsq = atoi(GRN_TEXT_VALUE(var));
-    var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
-    if (GRN_TEXT_LEN(var) != 0) {
-        strcpy(vocab_file, GRN_TEXT_VALUE(var));
-        vocab_file[GRN_TEXT_LEN(var)] = '\0';
-    } else {
-        strcpy(vocab_file, (char *)"vocab.txt");
-    }
-    var = grn_plugin_proc_get_var(ctx, user_data, "save_file", -1);
-    if (GRN_TEXT_LEN(var) != 0) {
-        strcpy(save_W_file, GRN_TEXT_VALUE(var));
-        save_W_file[GRN_TEXT_LEN(var)] = '\0';
-    } else {
-        strcpy(save_W_file, (char *)"vectors");
-    }
-    var = grn_plugin_proc_get_var(ctx, user_data, "gradsq_file", -1);
-    if (GRN_TEXT_LEN(var) != 0) {
-        strcpy(save_gradsq_file, GRN_TEXT_VALUE(var));
-        save_gradsq_file[GRN_TEXT_LEN(var)] = '\0';
-        save_gradsq = 1;
-    } else if (save_gradsq > 0) {
-        strcpy(save_gradsq_file, (char *)"gradsq");
-    }
-    var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
-    if (GRN_TEXT_LEN(var) != 0) {
-        strcpy(input_file, GRN_TEXT_VALUE(var));
-        input_file[GRN_TEXT_LEN(var)] = '\0';
-    } else {
-        strcpy(input_file, (char *)"cooccurrence.shuf.bin");
-    }
     vocab_size = 0;
     fid = fopen(vocab_file, "r");
     if(fid == NULL) {fprintf(stderr, "Unable to open vocab file %s.\n",vocab_file); return NULL;}
     while ((i = getc(fid)) != EOF) if (i == '\n') vocab_size++; // Count number of entries in vocab_file
     fclose(fid);
-    grn_ctx_output_bool(ctx, train_glove());
+    train_glove();
+    grn_ctx_output_bool(ctx, GRN_TRUE);
     
     return NULL;
 }
@@ -368,20 +418,20 @@ grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
   grn_expr_var vars[14];
-  grn_plugin_expr_var_init(ctx, &vars[0], "verbose", -1);
-  grn_plugin_expr_var_init(ctx, &vars[1], "vector_size", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "iter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[3], "threads", -1);
-  grn_plugin_expr_var_init(ctx, &vars[4], "alpha", -1);
-  grn_plugin_expr_var_init(ctx, &vars[5], "x_max", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "eta", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "binary", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "model", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "save_gradsq", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "vocab_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "save_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "gradsq_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[0], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "save_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "save_gradsq", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "gradsq_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "vector_size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "iter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "x_max", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "eta", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "model", -1);
   grn_plugin_command_create(ctx, "glove_train", -1, command_glove_train, 14, vars);
   return ctx->rc;
 }

@@ -48,6 +48,8 @@ int verbose = 2; // 0, 1, or 2
 long long array_size = 2000000; // size of chunks to shuffle individually
 char *file_head; // temporary file string
 real memory_limit = 2.0; // soft limit, in gigabytes
+char input_file[MAX_STRING_LENGTH];
+char output_file[MAX_STRING_LENGTH];
 
 /* Efficient string comparison */
 static int scmp( char *s1, char *s2 ) {
@@ -91,8 +93,9 @@ static int shuffle_merge(int num) {
     int fidcounter = 0;
     CREC *array;
     char filename[MAX_STRING_LENGTH];
-    FILE **fid, *fout = stdout;
-    
+    FILE **fid, *fout;
+    fout = fopen(output_file, "wb");
+
     array = malloc(sizeof(CREC) * array_size);
     fid = malloc(sizeof(FILE) * num);
     for(fidcounter = 0; fidcounter < num; fidcounter++) { //num = number of temporary files to merge
@@ -129,6 +132,7 @@ static int shuffle_merge(int num) {
         remove(filename);
     }
     fprintf(stderr, "\n\n");
+    fclose(fout);
     free(array);
     return 0;
 }
@@ -139,7 +143,12 @@ static int shuffle_by_chunks() {
     int fidcounter = 0;
     char filename[MAX_STRING_LENGTH];
     CREC *array;
-    FILE *fin = stdin, *fid;
+    FILE *fin, *fid;
+    fin = fopen(input_file, "rb");
+    if (fin == NULL) {
+      fprintf(stderr, "Unable to open file %s.\n",input_file);
+      return 1;
+    }
     array = malloc(sizeof(CREC) * array_size);
     
     fprintf(stderr,"SHUFFLING COOCCURRENCES\n");
@@ -178,6 +187,7 @@ static int shuffle_by_chunks() {
     if(verbose > 1) fprintf(stderr, "\033[22Gprocessed %ld lines.\n", l);
     if(verbose > 1) fprintf(stderr, "Wrote %d temporary file(s).\n", fidcounter + 1);
     fclose(fid);
+    fclose(fin);
     free(array);
     return shuffle_merge(fidcounter + 1); // Merge and shuffle together temporary files
 }
@@ -196,6 +206,28 @@ static GNUC_UNUSED int find_arg(char *str, int argc, char **argv) {
     return -1;
 }
 
+static void
+get_input_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.cooccur");
+}
+
+static void
+get_output_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.shuffle");
+}
+
 static grn_obj *
 command_glove_shuffle(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
                       grn_user_data *user_data)
@@ -203,7 +235,21 @@ command_glove_shuffle(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj *
     grn_obj *var;
 
     file_head = malloc(sizeof(char) * MAX_STRING_LENGTH);
-    
+
+    var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(input_file, GRN_TEXT_VALUE(var));
+        input_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_input_file_path(ctx, input_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "output_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(output_file, GRN_TEXT_VALUE(var));
+        output_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+        get_output_file_path(ctx, output_file);
+    }
     var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
     if (GRN_TEXT_LEN(var) != 0) verbose = atoi(GRN_TEXT_VALUE(var));
     var = grn_plugin_proc_get_var(ctx, user_data, "temp_file", -1);
@@ -219,7 +265,7 @@ command_glove_shuffle(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj *
     var = grn_plugin_proc_get_var(ctx, user_data, "array_size", -1);
     if (GRN_TEXT_LEN(var) != 0) array_size = atoll(GRN_TEXT_VALUE(var));
 
-    grn_ctx_output_bool(ctx, shuffle_by_chunks());
+    grn_ctx_output_int32(ctx, shuffle_by_chunks());
     return NULL;
 }
 
@@ -233,12 +279,14 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[4];
-  grn_plugin_expr_var_init(ctx, &vars[0], "verbose", -1);
-  grn_plugin_expr_var_init(ctx, &vars[1], "temp_file", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "memory", -1);
-  grn_plugin_expr_var_init(ctx, &vars[3], "array_size", -1);
-  grn_plugin_command_create(ctx, "glove_shuffle", -1, command_glove_shuffle, 4, vars);
+  grn_expr_var vars[6];
+  grn_plugin_expr_var_init(ctx, &vars[0], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "temp_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "memory", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "array_size", -1);
+  grn_plugin_command_create(ctx, "glove_shuffle", -1, command_glove_shuffle, 6, vars);
   return ctx->rc;
 }
 

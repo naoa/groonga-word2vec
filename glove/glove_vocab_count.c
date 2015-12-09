@@ -53,7 +53,8 @@ typedef struct hashrec {
 int verbose = 2; // 0, 1, or 2
 long long min_count = 1; // min occurrences for inclusion in vocab
 long long max_vocab = 0; // max_vocab = 0 for no limit
-
+char input_file[MAX_STRING_LENGTH];
+char output_file[MAX_STRING_LENGTH];
 
 /* Efficient string comparison */
 static int scmp( char *s1, char *s2 ) {
@@ -134,7 +135,9 @@ static int get_counts() {
     HASHREC **vocab_hash = inithashtable();
     HASHREC *htmp;
     VOCAB *vocab;
-    FILE *fid = stdin;
+    FILE *fid, *fout;
+    fid = fopen(input_file, "r");
+    fout = fopen(output_file, "w");
     
     fprintf(stderr, "BUILDING VOCABULARY\n");
     if(verbose > 1) fprintf(stderr, "Processed %lld tokens.", i);
@@ -171,11 +174,13 @@ static int get_counts() {
             if(verbose > 0) fprintf(stderr, "Truncating vocabulary at min count %lld.\n",min_count);
             break;
         }
-        printf("%s %lld\n",vocab[i].word,vocab[i].count);
+        fprintf(fout, "%s %lld\n",vocab[i].word,vocab[i].count);
     }
     
     if(i == max_vocab && max_vocab < j) if(verbose > 0) fprintf(stderr, "Truncating vocabulary at size %lld.\n", max_vocab);
     fprintf(stderr, "Using vocabulary of size %lld.\n\n", i);
+    fclose(fid);
+    fclose(fout);
     return 0;
 }
 
@@ -193,11 +198,49 @@ static GNUC_UNUSED int find_arg(char *str, int argc, char **argv) {
     return -1;
 }
 
+static void
+get_input_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.txt");
+}
+
+static void
+get_output_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.vocab");
+}
+
 static grn_obj *
 command_glove_vocab_count(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
                           grn_user_data *user_data)
 {
     grn_obj *var;
+
+    var = grn_plugin_proc_get_var(ctx, user_data, "input_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(input_file, GRN_TEXT_VALUE(var));
+        input_file[GRN_TEXT_LEN(var)] = '\0';
+    } else {
+      get_input_file_path(ctx, input_file);
+    }
+    var = grn_plugin_proc_get_var(ctx, user_data, "output_file", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+        strcpy(output_file, GRN_TEXT_VALUE(var));
+        output_file[GRN_TEXT_LEN(var)] = '\0';
+    }
+    if (output_file[0] == 0) {
+      get_output_file_path(ctx, output_file);
+    }
     var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
     if (GRN_TEXT_LEN(var) != 0) verbose = atoi(GRN_TEXT_VALUE(var));
     var = grn_plugin_proc_get_var(ctx, user_data, "max_vocab", -1);
@@ -205,7 +248,7 @@ command_glove_vocab_count(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     var = grn_plugin_proc_get_var(ctx, user_data, "min_count", -1);
     if (GRN_TEXT_LEN(var) != 0) min_count = atoll(GRN_TEXT_VALUE(var));
 
-    grn_ctx_output_bool(ctx, get_counts());
+    grn_ctx_output_bool(ctx, !get_counts());
     return NULL;
 }
 
@@ -219,11 +262,13 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[3];
-  grn_plugin_expr_var_init(ctx, &vars[0], "verbose", -1);
-  grn_plugin_expr_var_init(ctx, &vars[1], "max_vocab", -1);
-  grn_plugin_expr_var_init(ctx, &vars[2], "min_count", -1);
-  grn_plugin_command_create(ctx, "glove_vocab_count", -1, command_glove_vocab_count, 3, vars);
+  grn_expr_var vars[5];
+  grn_plugin_expr_var_init(ctx, &vars[0], "input_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "output_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "max_vocab", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "min_count", -1);
+  grn_plugin_command_create(ctx, "glove_vocab_count", -1, command_glove_vocab_count, 5, vars);
   return ctx->rc;
 }
 
