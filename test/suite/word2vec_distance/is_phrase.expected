@@ -50,7 +50,7 @@ word2vec_distance "Groonga Database" --is_phrase 1
       0.0368562042713165
     ],
     [
-      "mysql_database",
+      "mysql database",
       -0.0158039312809706
     ],
     [
