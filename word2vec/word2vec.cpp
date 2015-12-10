@@ -893,11 +893,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < input_n_words; a++) {
     found_row_idx[a] = grn_pat_get(ctx, vocab[model_idx], input_term[a], strlen(input_term[a]), NULL);
 
-    if (found_row_idx[a] != GRN_ID_NIL) {
-      found_row_idx[a]--;
-    }
-    //id=1 : </s> can skip
-    if (found_row_idx[a] == 0) {
+    found_row_idx[a]--;
+    if (found_row_idx[a] == -1) {
       if (expander_mode == GRN_EXPANDER_NONE) {
         output_header(ctx, 0);
         grn_ctx_output_array_open(ctx, "HIT", 2);
@@ -946,14 +943,12 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   if (input_n_words == 1) {
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (b = 0; b < input_n_words; b++) {
-      if (found_row_idx[b] == -1) continue;
       for (a = 0; a < dim_size[model_idx]; a++) vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
     }
   } else {
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (a = 0; a < dim_size[model_idx]; a++) {
       for (b = 0; b < input_n_words; b++) {
-        if (found_row_idx[b] == -1) continue;
         if (op[b] == '-') {
           vec[a] -= M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
         } else {
