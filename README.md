@@ -102,6 +102,7 @@ JSON
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
 | white_term_filter   | 出力をさせる単語にマッチする正規表現(完全一致) | NULL |
+| output_filter   | 出力をさせる単語から除去する正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |

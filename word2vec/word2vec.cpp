@@ -711,6 +711,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   int normalizer_len = 14;
   char *term_filter = NULL;
   char *white_term_filter = NULL;
+  char *output_filter = NULL;
   char *mecab_option = NULL;
   int expander_mode = 0;
   grn_bool is_phrase = GRN_FALSE;
@@ -776,6 +777,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "white_term_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     white_term_filter = GRN_TEXT_VALUE(var);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    output_filter = GRN_TEXT_VALUE(var);
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -992,13 +997,20 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
               break;
             }
           }
-
           for (d = N - 1; d > a; d--) {
             bestd[d] = bestd[d - 1];
             strcpy(bestw[d], bestw[d - 1]);
           }
           bestd[a] = dist;
-          strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
+
+          if (output_filter != NULL) {
+            string s = &load_vocab[model_index][c * max_w];
+            re2::RE2::GlobalReplace(&s, output_filter, " ");
+            strcpy(bestw[a], s.c_str());
+          } else {
+            strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
+          }
+
           break;
         }
       }
@@ -1041,7 +1053,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         continue;
       }
       if (is_sentence_vectors) {
-        if (strncmp(&load_vocab[model_index][c * max_w], "doc_id:", 7) != 0) {
+        if (strncmp(&load_vocab[model_index][c * max_w], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
           continue;
         }
       }
@@ -1071,7 +1083,13 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
             add_record(ctx, res, &doc_id, sizeof(grn_id), dist);
           }
         } else {
-          add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
+          if (output_filter != NULL) {
+            string s = &load_vocab[model_index][c * max_w];
+            re2::RE2::GlobalReplace(&s, output_filter, " ");
+            add_record_value(ctx, res, (char*)s.c_str(), s.length(), dist);
+          } else {
+            add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
+          }
         }
       }
     }
@@ -1729,16 +1747,17 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[5], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[6], "term_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[7], "white_term_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[8], "mecab_option", -1);
-  grn_plugin_expr_var_init(ctx, &vars[9], "file_path", -1);
-  grn_plugin_expr_var_init(ctx, &vars[10], "expander_mode", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "is_phrase", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "edit_distance", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 17, vars);
+  grn_plugin_expr_var_init(ctx, &vars[8], "output_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "mecab_option", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "file_path", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "expander_mode", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "is_phrase", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "edit_distance", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 18, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);
