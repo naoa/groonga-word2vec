@@ -115,7 +115,8 @@ JSON
 
 * 上限
 
-* 語彙の最大バイト数(max_length_of_vocab_word) 255
+語彙の最大バイト数(max_length_of_vocab_word) 255  
+入力単語の最大数(MAX_TERMS) 100
 
 * 出力形式  
 JSON
