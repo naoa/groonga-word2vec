@@ -962,7 +962,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   if (N > 0 && N < TOP_N_SORT_THRESHOLD) {
     bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
     for (a = 0; a < N; a++) {
-      bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_size * sizeof(char));
+      bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_length_of_vocab_word * sizeof(char));
     }
     bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
     for (a = 0; a < N; a++) bestd[a] = -1;
