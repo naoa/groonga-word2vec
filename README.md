@@ -286,7 +286,7 @@ word2vec_distanceを使って動的にクエリ展開をします。
     % make
     % sudo make install
 
-``--configure disable-word2vec``の場合、word2vec実行バイナリをインストールしません。
+``./configure --disable-word2vec``の場合、word2vec実行バイナリをインストールしません。
 
 ## 使い方
 
