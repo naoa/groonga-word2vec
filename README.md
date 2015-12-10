@@ -96,8 +96,8 @@ JSON
 |:-----------|:------------|:-------------|
 | term      | 入力単語 or 単語式 (e.g. 単語A + 単語B - 単語C) | NULL |
 | offset      | 結果出力のオフセット | 0 | 
-| limit     | 結果出力の上限件数 n_sort以上の数は出力されない(n_sortが200未満の場合) | 10 |
-| n_sort     | Topソートバッファのサイズ 200までは増やせば増やすほど遅くなる  -1または200以上の場合は全件になる(そちらのほうがはやい) | 40 |
+| limit     | 結果出力の上限件数 n_sort以上の数は出力されない | 10 |
+| n_sort     | 挿入ソートのバッファサイズ 増やせば増やすほど遅くなる | 40 |
 | threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
@@ -114,10 +114,8 @@ JSON
 | sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_score |
 
 * 上限
-```
-const long long max_size = 2000; // max length of strings(入力文字列)
-const long long max_w = 255; // max length of vocabulary entries
-```
+
+* 語彙の最大バイト数(max_length_of_vocab_word) 255
 
 * 出力形式  
 JSON

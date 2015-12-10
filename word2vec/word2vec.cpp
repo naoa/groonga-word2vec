@@ -75,9 +75,6 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define DOC_ID_PREFIX_LEN 7
 
 #define MAX_COLUMNS 20
-
-#define TOP_N_SORT_THRESHOLD 200
-
 #define MAX_STRING 100
 
 typedef struct {
@@ -959,158 +956,99 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   len = sqrt(len);
   for (a = 0; a < dim_size[model_index]; a++) vec[a] /= len;
 
-  if (N > 0 && N < TOP_N_SORT_THRESHOLD) {
-    bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
+  bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
+  for (a = 0; a < N; a++) {
+    bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_length_of_vocab_word * sizeof(char));
+  }
+  bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
+  for (a = 0; a < N; a++) bestd[a] = -1;
+  for (a = 0; a < N; a++) bestw[a][0] = 0;
+
+  for (long long word_idx = 0; word_idx < n_words[model_index]; word_idx++) {
+    a = 0;
+    //skip same word
+    for (b = 0; b < input_n_words; b++) if (found_row_index[b] == word_idx) a = 1;
+    if (a == 1) continue;
+
+    dist = 0;
+    //calc distance
+    for (a = 0; a < dim_size[model_index]; a++) dist += vec[a] * M[model_index][a + word_idx * dim_size[model_index]];
+
+    //Insert sort to bestw[N]
     for (a = 0; a < N; a++) {
-      bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_length_of_vocab_word * sizeof(char));
-    }
-    bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
-    for (a = 0; a < N; a++) bestd[a] = -1;
-    for (a = 0; a < N; a++) bestw[a][0] = 0;
-
-    for (long long word_idx = 0; word_idx < n_words[model_index]; word_idx++) {
-      a = 0;
-      //skip same word
-      for (b = 0; b < input_n_words; b++) if (found_row_index[b] == word_idx) a = 1;
-      if (a == 1) continue;
-
-      dist = 0;
-      //calc distance
-      for (a = 0; a < dim_size[model_index]; a++) dist += vec[a] * M[model_index][a + word_idx * dim_size[model_index]];
-
-      //Insert sort to bestw[N]
-      for (a = 0; a < N; a++) {
-        if (dist > bestd[a]) {
-          if (threshold > 0 && dist < threshold) {
-            break;
-          }
-          if (is_sentence_vectors) {
-            if (strncmp(&load_vocab[model_index][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
-              break;
-            }
-          }
-          if (white_term_filter != NULL) {
-            string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-            string t = white_term_filter;
-            if ( !RE2::FullMatch(s, t) ) {
-              break;
-            }
-          }
-          if (term_filter != NULL) {
-            string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-            string t = term_filter;
-            if ( RE2::FullMatch(s, t) ) {
-              break;
-            }
-          }
-          for (long long d = N - 1; d > a; d--) {
-            bestd[d] = bestd[d - 1];
-            strcpy(bestw[d], bestw[d - 1]);
-          }
-          bestd[a] = dist;
-
-          if (output_filter != NULL || is_phrase) {
-            string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-            if (is_phrase) {
-              re2::RE2::GlobalReplace(&s, "_", " ");
-            }
-            if (output_filter != NULL) {
-              re2::RE2::GlobalReplace(&s, output_filter, "");
-            }
-            strcpy(bestw[a], s.c_str());
-          } else {
-            //charの１次元配列からword取得
-            strcpy(bestw[a], &load_vocab[model_index][word_idx * max_length_of_vocab_word]);
-          }
-
+      if (dist > bestd[a]) {
+        if (threshold > 0 && dist < threshold) {
           break;
         }
-      }
-    }
-
-    for (a = 0; a < N; a++) {
-      if (strlen(bestw[a]) > 0) {
-        if (is_sentence_vectors && table_len) {
-          char *doc_id_p;
-          grn_id doc_id = 0;
-          doc_id_p = bestw[a];
-          doc_id_p += DOC_ID_PREFIX_LEN;
-          doc_id = atoi(doc_id_p);
-          if (doc_id) {
-            add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
+        if (is_sentence_vectors) {
+          if (strncmp(&load_vocab[model_index][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
+            break;
           }
+        }
+        if (white_term_filter != NULL) {
+          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          string t = white_term_filter;
+          if ( !RE2::FullMatch(s, t) ) {
+            break;
+          }
+        }
+        if (term_filter != NULL) {
+          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          string t = term_filter;
+          if ( RE2::FullMatch(s, t) ) {
+            break;
+          }
+        }
+        for (long long d = N - 1; d > a; d--) {
+          bestd[d] = bestd[d - 1];
+          strcpy(bestw[d], bestw[d - 1]);
+        }
+        bestd[a] = dist;
+
+        if (output_filter != NULL || is_phrase) {
+          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          if (is_phrase) {
+            re2::RE2::GlobalReplace(&s, "_", " ");
+          }
+          if (output_filter != NULL) {
+            re2::RE2::GlobalReplace(&s, output_filter, "");
+          }
+          strcpy(bestw[a], s.c_str());
         } else {
-          add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
+          //charの１次元配列からword取得
+          strcpy(bestw[a], &load_vocab[model_index][word_idx * max_length_of_vocab_word]);
         }
-      }
-    }
-  
-    for (a = 0; a < N; a++) {
-      GRN_PLUGIN_FREE(ctx, bestw[a]);
-      bestw[a] = NULL;
-    }
-    GRN_PLUGIN_FREE(ctx, bestw);
-    bestw = NULL;
-    GRN_PLUGIN_FREE(ctx, bestd);
-    bestd = NULL;
 
-  } else {
-    for (long long word_idx = 0; word_idx < n_words[model_index]; word_idx++) {
-      a = 0;
-      for (b = 0; b < input_n_words; b++) if (found_row_index[b] == word_idx) a = 1;
-      if (a == 1) continue;
-      dist = 0;
-      for (a = 0; a < dim_size[model_index]; a++) dist += vec[a] * M[model_index][a + word_idx * dim_size[model_index]];
-      if (threshold > 0 && dist < threshold) {
-        continue;
-      }
-      if (is_sentence_vectors) {
-        if (strncmp(&load_vocab[model_index][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
-          continue;
-        }
-      }
-      if (white_term_filter != NULL) {
-        string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-        string t = white_term_filter;
-        if ( !RE2::FullMatch(s, t) ) {
-          continue;
-        }
-      }
-      if (term_filter != NULL) {
-        string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-        string t = term_filter;
-        if ( RE2::FullMatch(s, t) ) {
-          continue;
-        }
-      }
-
-      if (strlen(&load_vocab[model_index][word_idx * max_length_of_vocab_word]) > 0) {
-        if (is_sentence_vectors && table_len) {
-          char *doc_id_p;
-          grn_id doc_id = 0;
-          doc_id_p = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-          doc_id_p += DOC_ID_PREFIX_LEN;
-          doc_id = atoi(doc_id_p);
-          if (doc_id) {
-            add_record(ctx, res, &doc_id, sizeof(grn_id), dist);
-          }
-        } else {
-          if (output_filter != NULL || is_phrase) {
-            string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
-            if (is_phrase) {
-              re2::RE2::GlobalReplace(&s, "_", " ");
-            }
-            if (output_filter != NULL) {
-              re2::RE2::GlobalReplace(&s, output_filter, "");
-            }
-            add_record_value(ctx, res, (char*)s.c_str(), s.length(), dist);
-          } else {
-            add_record_value(ctx, res, &load_vocab[model_index][word_idx * max_length_of_vocab_word], strlen(&load_vocab[model_index][word_idx * max_length_of_vocab_word]), dist);
-          }
-        }
+        break;
       }
     }
   }
+
+  for (a = 0; a < N; a++) {
+    if (strlen(bestw[a]) > 0) {
+      if (is_sentence_vectors && table_len) {
+        char *doc_id_p;
+        grn_id doc_id = 0;
+        doc_id_p = bestw[a];
+        doc_id_p += DOC_ID_PREFIX_LEN;
+        doc_id = atoi(doc_id_p);
+        if (doc_id) {
+          add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
+        }
+      } else {
+        add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
+      }
+    }
+  }
+  
+  for (a = 0; a < N; a++) {
+    GRN_PLUGIN_FREE(ctx, bestw[a]);
+    bestw[a] = NULL;
+  }
+  GRN_PLUGIN_FREE(ctx, bestw);
+  bestw = NULL;
+  GRN_PLUGIN_FREE(ctx, bestd);
+  bestd = NULL;
 
   if (expander_mode == GRN_EXPANDER_EXPANDED) {
     grn_obj buf;
