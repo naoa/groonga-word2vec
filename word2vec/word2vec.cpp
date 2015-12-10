@@ -71,11 +71,14 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define DEFAULT_SORTBY          "-_score"
 #define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
+#define DEFAULT_N_SORT 40
+
 #define DOC_ID_PREFIX "doc_id:"
 #define DOC_ID_PREFIX_LEN 7
 
 #define MAX_COLUMNS 20
 #define MAX_STRING 100
+#define MAX_TERMS 100
 
 typedef struct {
   double score;
@@ -692,15 +695,16 @@ static grn_obj *
 command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
                           grn_user_data *user_data)
 {
-  char input[max_size];
-  long long N = 40; // number of closest words that will be shown
-  char *input_term[100];
+  const char *input;
+  long long N = DEFAULT_N_SORT;
+  char input_term[MAX_TERMS][max_length_of_vocab_word];
+  long long found_row_index[MAX_TERMS];
+  char op[MAX_TERMS] = {'+'};
   float dist, len, vec[max_size];
   char **bestw;
   float *bestd;
   long long a, b;
-  long long input_n_words, found_row_index[100];
-  char op[100] = {'+'};
+  int input_n_words = 0;
   grn_obj *var;
   int offset = 0;
   int limit = 10;
@@ -752,6 +756,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "n_sort", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     N = atoi(GRN_TEXT_VALUE(var));
+    if (N < 0) {
+      N = DEFAULT_N_SORT;
+    }
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "threshold", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -826,34 +833,33 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_bool(ctx, GRN_FALSE);
     return NULL;
   } else {
-    const char *term;
     grn_obj buf;
     int array_len;
-    char *result_array[100];
+    char *result_array[MAX_TERMS];
     int op_row = 1;
 
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
 
     if (normalizer_len){
-      term = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
+      input = normalize(ctx, var, normalizer_name, normalizer_len, &buf);
     } else {
       GRN_TEXT_PUTC(ctx, var, '\0');
-      term = GRN_TEXT_VALUE(var);
+      input = GRN_TEXT_VALUE(var);
     }
-    right_trim((char *)term, '\n');
-    right_trim((char *)term, ' ');
-    if (mecab_option != NULL && strlen(term) > 0){
-      term = sparse(ctx, term, mecab_option);
-      right_trim((char *)term, '\n');
-      right_trim((char *)term, ' ');
+    right_trim((char *)input, '\n');
+    right_trim((char *)input, ' ');
+    if (mecab_option != NULL && strlen(input) > 0){
+      input = sparse(ctx, input, mecab_option);
+      right_trim((char *)input, '\n');
+      right_trim((char *)input, ' ');
     }
     if (is_phrase) {
-      string s = term;
+      string s = input;
       re2::RE2::GlobalReplace(&s, " ", "_");
-      strcpy((char *)term, s.c_str());
+      strcpy((char *)input, s.c_str());
     }
-    array_len = split(result_array, NELEMS(result_array), term, " ");
+    array_len = split(result_array, NELEMS(result_array), input, " ");
     for (unsigned int i = 0; i < array_len; i++) {
       if (result_array[i][0] == '+'){
         op[op_row] = '+';
@@ -863,19 +869,12 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         op[op_row] = '-';
         op_row++;
       } else {
-        if (i == 0) {
-          strcpy(input, result_array[i]);
-        } else {
-          strcat(input, result_array[i]);
-        }
-        if ( i < array_len - 1) {
-          strcat(input, " ");
-        }
+        strcpy(input_term[input_n_words], result_array[i]);
+        input_n_words++;
       }
     }
     grn_obj_unlink(ctx, &buf);
   }
-  input_n_words = split(input_term, NELEMS(input_term), input, " ");
 
   for (a = 0; a < input_n_words; a++) {
     for (b = 0; b < n_words[model_index]; b++) if (!strcmp(&load_vocab[model_index][b * max_length_of_vocab_word], input_term[a])) break;
@@ -974,7 +973,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     //calc distance
     for (a = 0; a < dim_size[model_index]; a++) dist += vec[a] * M[model_index][a + word_idx * dim_size[model_index]];
 
-    //Insert sort to bestw[N]
+    //Insertion sort to bestw[N]
     for (a = 0; a < N; a++) {
       if (dist > bestd[a]) {
         if (threshold > 0 && dist < threshold) {
@@ -1055,7 +1054,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_TEXT_INIT(&buf, 0);
     GRN_BULK_REWIND(&buf);
     GRN_TEXT_PUTS(ctx, &buf, "((");
-    GRN_TEXT_PUTS(ctx, &buf, input);
+    GRN_TEXT_PUTS(ctx, &buf, input_term[0]);
     output_for_expander(ctx, res, offset, limit, "-_value", strlen("-_value"), &buf);
     GRN_TEXT_PUTS(ctx, &buf, "))");
     grn_ctx_output_obj(ctx, &buf, NULL);
