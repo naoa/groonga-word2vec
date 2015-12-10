@@ -118,6 +118,7 @@ AC_SUBST(word2vec_pluginsdir)
 AC_CONFIG_FILES([
   Makefile
   word2vec/Makefile
+  vendor/Makefile
   test/Makefile
 ])
 
