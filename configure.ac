@@ -98,13 +98,22 @@ if test "x$with_re2" = "xyes"; then
 fi
 AM_CONDITIONAL(WITH_RE2, test "x$with_re2" = "xyes")
 
+# Word2Vec
+
+AC_ARG_ENABLE(word2vec,
+  [ --disable-word2vec   Don't install Word2Vec binary],
+  [case "${enableval}" in
+     yes | no ) enable_word2vec="${enableval}" ;;
+     *) AC_MSG_ERROR(bad value ${enableval} for --disable-word2vec) ;;
+   esac]
+)
+AM_CONDITIONAL(NOINST_WORD2VEC, test "x$enable_word2vec" = "xno")
 
 GROONGA_REQUIRED_VERSION=4.0.3
 PKG_CHECK_MODULES([GROONGA], [groonga >= ${GROONGA_REQUIRED_VERSION}])
 
 _PKG_CONFIG(GROONGA_PLUGINS_DIR, [variable=pluginsdir],    [groonga])
 _PKG_CONFIG(GROONGA,             [variable=groonga],       [groonga])
-_PKG_CONFIG(GROONGA_HTTPD,       [variable=groonga_httpd], [groonga])
 
 GROONGA_PLUGINS_DIR="${pkg_cv_GROONGA_PLUGINS_DIR}"
 GROONGA="${pkg_cv_GROONGA}"
@@ -146,4 +155,10 @@ echo
 echo "  RE2: $with_re2"
 if test "x$with_re2" = "xyes"; then
   echo "  LIBS:                  ${RE2_LIBS}"
+fi
+echo
+if test "x$enable_word2vec" = "xno"; then
+  echo "  Word2Vec: $enable_word2vec"
+else
+  echo "  Word2Vec: yes"
 fi
