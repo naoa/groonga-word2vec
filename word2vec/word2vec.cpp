@@ -700,7 +700,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char input_term[MAX_TERMS][max_length_of_vocab_word];
   long long found_row_idx[MAX_TERMS];
   char op[MAX_TERMS] = {'+'};
-  float dist, len, vec[max_size];
+  float dist, len;
+  float *vec;
   char **bestw;
   float *bestd;
   long long a, b;
@@ -929,6 +930,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     }
   }
 
+  vec = (float *)GRN_PLUGIN_MALLOC(ctx, dim_size[model_idx] * sizeof(float));
+
   if (input_n_words == 1) {
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (b = 0; b < input_n_words; b++) {
@@ -1072,6 +1075,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       output(ctx, res, offset, limit, "_key,_value", strlen("_key,_value"), "-_value", strlen("-_value"));
     }
   }
+
+  GRN_PLUGIN_FREE(ctx, vec);
+  vec = NULL;
 
   if (res) {
     grn_obj_close(ctx, res);
