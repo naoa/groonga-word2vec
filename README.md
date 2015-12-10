@@ -41,7 +41,9 @@ JSON
 ```
 
 ### ```word2vec_train```
-スペース区切りの学習用テキストからword2vecで学習させます。
+スペース区切りの学習用テキストからword2vecコマンドで学習させます。
+
+OSが実行可能なパスにword2vecコマンドが必要です。デフォルトでは一緒にbindirにword2vecコマンドがインストールされます。
 
 学習用ファイル名が省略された場合、`{Groongaのデータベースパス}+_w2v.txt`が利用されます。
 
@@ -283,6 +285,8 @@ word2vec_distanceを使って動的にクエリ展開をします。
     % ./configure
     % make
     % sudo make install
+
+``--configure disable-word2vec``の場合、word2vec実行バイナリをインストールしません。
 
 ## 使い方
 
