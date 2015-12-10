@@ -9,6 +9,8 @@ AM_LDFLAGS =					\
 LIBS =						\
 	$(GROONGA_LIBS)
 
+bin_PROGRAMS = word2vec/word2vec
+
 word2vec_plugins_LTLIBRARIES =
 word2vec_plugins_LTLIBRARIES += word2vec.la
 

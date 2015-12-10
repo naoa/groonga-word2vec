@@ -68,7 +68,6 @@ JSON
 | iter    | 学習回数 | 5 |
 | min_count    | 単語の最低出現数 | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数 | 0 |
-| is_output_file   | classes>=1でk-meansの出力結果をファイルとする場合1 | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
 
 * 出力形式  
@@ -84,57 +83,6 @@ Vocab size: 976190
 Words in train file: 219474851
 Alpha: 0.000100  Progress: 99.60%  Words/thread/sec: 7.07k
 [[0,0.0,0.0],true]
-```
-
-k-meansクラスタリングの出力例
-
-```
-word2vec_train --min_count 1 --classes 3
-[
-  [
-    0,
-    0.0,
-    0.0
-  ],
-  [
-    [
-      6
-    ],
-    [
-      [
-        "_key",
-        "ShortText"
-      ],
-      [
-        "_score",
-        "Int32"
-      ]
-    ],
-    [
-      "postgresql",
-      2
-    ],
-    [
-      "database",
-      2
-    ],
-    [
-      "mysql",
-      1
-    ],
-    [
-      "mroonga",
-      1
-    ],
-    [
-      "fulltextsearch",
-      0
-    ],
-    [
-      "groonga",
-      0
-    ]
-  ]
 ```
 
 ### ```word2vec_distance```

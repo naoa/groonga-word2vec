@@ -108,11 +108,9 @@ _PKG_CONFIG(GROONGA_HTTPD,       [variable=groonga_httpd], [groonga])
 
 GROONGA_PLUGINS_DIR="${pkg_cv_GROONGA_PLUGINS_DIR}"
 GROONGA="${pkg_cv_GROONGA}"
-GROONGA_HTTPD="${pkg_cv_GROONGA_HTTPD}"
 
 AC_SUBST(GROONGA_PLUGINS_DIR)
 AC_SUBST(GROONGA)
-AC_SUBST(GROONGA_HTTPD)
 
 word2vec_pluginsdir="\${GROONGA_PLUGINS_DIR}/word2vec"
 AC_SUBST(word2vec_pluginsdir)
