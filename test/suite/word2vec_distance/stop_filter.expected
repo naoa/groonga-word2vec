@@ -20,7 +20,7 @@ dump_to_train_file Entries title,tag,tags
 [[0,0.0,0.0],true]
 word2vec_train --min_count 1
 [[0,0.0,0.0],true]
-word2vec_distance "Groonga" --term_filter "rroonga"
+word2vec_distance "Groonga" --stop_filter "rroonga"
 [
   [
     0,

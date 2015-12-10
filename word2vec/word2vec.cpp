@@ -725,7 +725,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   float threshold = -1;
   char *normalizer_name = (char *)"NormalizerAuto";
   int normalizer_len = 14;
-  char *term_filter = NULL;
+  char *stop_filter = NULL;
   char *prefix_filter = NULL;
   char *output_filter = NULL;
   char *mecab_option = NULL;
@@ -793,10 +793,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     prefix_filter = GRN_TEXT_VALUE(var);
     prefix_filter[GRN_TEXT_LEN(var)] = '\0';
   }
-  var = grn_plugin_proc_get_var(ctx, user_data, "term_filter", -1);
+  var = grn_plugin_proc_get_var(ctx, user_data, "stop_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
-    term_filter = GRN_TEXT_VALUE(var);
-    term_filter[GRN_TEXT_LEN(var)] = '\0';
+    stop_filter = GRN_TEXT_VALUE(var);
+    stop_filter[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -1006,9 +1006,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           if (threshold > 0 && dist < threshold) {
             break;
           }
-          if (term_filter != NULL) {
+          if (stop_filter != NULL) {
             string s = key_name;
-            string t = term_filter;
+            string t = stop_filter;
             if ( RE2::FullMatch(s, t) ) {
               break;
             }
@@ -1719,7 +1719,7 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[4], "threshold", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "normalizer", -1);
   grn_plugin_expr_var_init(ctx, &vars[6], "prefix_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "term_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "stop_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[8], "output_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[9], "mecab_option", -1);
   grn_plugin_expr_var_init(ctx, &vars[10], "file_path", -1);

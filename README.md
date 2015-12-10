@@ -101,7 +101,7 @@ JSON
 | threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | prefix_filter   | 出力をさせる単語に前方一致する文字列  高速な絞込が可能 | NULL |
-| term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
+| stop_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
 | output_filter   | 出力をさせる単語から除去する正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
