@@ -877,6 +877,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   for (a = 0; a < input_n_words; a++) {
+    //語彙表から同じ単語を線形探索
+    //ここO(1)にできる
     for (b = 0; b < n_words[model_idx]; b++) if (!strcmp(&load_vocab[model_idx][b * max_length_of_vocab_word], input_term[a])) break;
     if (b == n_words[model_idx]) b = -1;
     found_row_idx[a] = b;
@@ -931,9 +933,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (b = 0; b < input_n_words; b++) {
       if (found_row_idx[b] == -1) continue;
-      //見つかった行数から次元数の少数値をsum
+      //見つかった行数から次元数の少数値をコピー
       //１次元のfloat配列を２次元的にアクセスしている
-      //word1 [0.01, 0.002, 0.003, ...] の配列部分のsum
+      //word1 [0.01, 0.002, 0.003, ...] の配列部分
       for (a = 0; a < dim_size[model_idx]; a++) vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
     }
   } else {
@@ -979,11 +981,13 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         if (threshold > 0 && dist < threshold) {
           break;
         }
+        //トライでしぼりこみ
         if (is_sentence_vectors) {
           if (strncmp(&load_vocab[model_idx][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
             break;
           }
         }
+        //トライでしぼりこみ
         if (white_term_filter != NULL) {
           string s = &load_vocab[model_idx][word_idx * max_length_of_vocab_word];
           string t = white_term_filter;
@@ -1014,7 +1018,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           }
           strcpy(bestw[a], s.c_str());
         } else {
-          //charの１次元配列からword取得
           strcpy(bestw[a], &load_vocab[model_idx][word_idx * max_length_of_vocab_word]);
         }
 
