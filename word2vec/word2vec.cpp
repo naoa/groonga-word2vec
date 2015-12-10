@@ -726,7 +726,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char *normalizer_name = (char *)"NormalizerAuto";
   int normalizer_len = 14;
   char *term_filter = NULL;
-  char *white_term_filter = NULL;
+  char *prefix_filter = NULL;
   char *output_filter = NULL;
   char *mecab_option = NULL;
   int expander_mode = 0;
@@ -788,17 +788,20 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       normalizer_len = GRN_TEXT_LEN(var);
     }
   }
+  var = grn_plugin_proc_get_var(ctx, user_data, "prefix_filter", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    prefix_filter = GRN_TEXT_VALUE(var);
+    prefix_filter[GRN_TEXT_LEN(var)] = '\0';
+  }
   var = grn_plugin_proc_get_var(ctx, user_data, "term_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     term_filter = GRN_TEXT_VALUE(var);
-  }
-  var = grn_plugin_proc_get_var(ctx, user_data, "white_term_filter", -1);
-  if (GRN_TEXT_LEN(var) != 0) {
-    white_term_filter = GRN_TEXT_VALUE(var);
+    term_filter[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "output_filter", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     output_filter = GRN_TEXT_VALUE(var);
+    output_filter[GRN_TEXT_LEN(var)] = '\0';
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "mecab_option", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -972,7 +975,14 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) bestd[a] = -1;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
 
-  pc = grn_pat_cursor_open(ctx, vocab[model_idx], NULL, 0, NULL, 0, 0, -1, GRN_CURSOR_BY_ID);
+
+  if (is_sentence_vectors) {
+    pc = grn_pat_cursor_open(ctx, vocab[model_idx], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN, NULL, 0, 0, -1, GRN_CURSOR_PREFIX);
+  } else if (prefix_filter != NULL) {
+    pc = grn_pat_cursor_open(ctx, vocab[model_idx], prefix_filter, strlen(prefix_filter), NULL, 0, 0, -1, GRN_CURSOR_PREFIX);
+  } else {
+    pc = grn_pat_cursor_open(ctx, vocab[model_idx], NULL, 0, NULL, 0, 0, -1, GRN_CURSOR_BY_ID);
+  }
   if (pc) {
     long long word_idx;
     while ((word_idx = grn_pat_cursor_next(ctx, pc)) != GRN_ID_NIL) {
@@ -984,7 +994,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       if (a == 1) continue;
 
       dist = 0;
-      //calc distance
       for (a = 0; a < dim_size[model_idx]; a++) dist += vec[a] * M[model_idx][a + word_idx * dim_size[model_idx]];
 
       //Insertion sort to bestw[N]
@@ -996,20 +1005,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           key_name[key_len] = '\0';
           if (threshold > 0 && dist < threshold) {
             break;
-          }
-          //トライでしぼりこみにする
-          if (is_sentence_vectors) {
-            if (strncmp(key_name, DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
-              break;
-            }
-          }
-          //トライでしぼりこみにする
-          if (white_term_filter != NULL) {
-            string s = key_name;
-            string t = white_term_filter;
-            if ( !RE2::FullMatch(s, t) ) {
-              break;
-            }
           }
           if (term_filter != NULL) {
             string s = key_name;
@@ -1723,8 +1718,8 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[3], "n_sort", -1);
   grn_plugin_expr_var_init(ctx, &vars[4], "threshold", -1);
   grn_plugin_expr_var_init(ctx, &vars[5], "normalizer", -1);
-  grn_plugin_expr_var_init(ctx, &vars[6], "term_filter", -1);
-  grn_plugin_expr_var_init(ctx, &vars[7], "white_term_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "prefix_filter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "term_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[8], "output_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[9], "mecab_option", -1);
   grn_plugin_expr_var_init(ctx, &vars[10], "file_path", -1);

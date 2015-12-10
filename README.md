@@ -100,15 +100,15 @@ JSON
 | n_sort     | 挿入ソートのバッファサイズ 増やせば増やすほど遅くなる | 40 |
 | threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
+| prefix_filter   | 出力をさせる単語に前方一致する文字列  高速な絞込が可能 | NULL |
 | term_filter   | 出力をさせない単語にマッチする正規表現(完全一致) | NULL |
-| white_term_filter   | 出力をさせる単語にマッチする正規表現(完全一致) | NULL |
 | output_filter   | 出力をさせる単語から除去する正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | edit_distance   | 出力結果を編集距離の近い順にする場合1  編集距離は_scoreにセットされる | 0 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ  1:クエリ展開 ((query1) OR (query2)) | 0 |
-| sentence_vectors   | sentence_vectorのみを出力する場合1 | 0 |
+| sentence_vectors   | doc_id:から始まるsentence_vectorのみを出力する場合1  これを使う場合prefix_filterは無視される | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
 | column   | sentence_vectorのdoc_idに対応して出力するカラム名  ``,``区切りで複数指定可  _scoreはfloat出力できないため0と出力される(ソートはされている) | _id,_score |
 | sortby   | sentence_vectorのdoc_idに対応して出力するカラムのソート  ``,``区切りで複数指定可 | -_score |
