@@ -743,6 +743,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   int model_idx = 0;
   grn_obj *table = NULL;
   grn_obj *res = NULL;
+  grn_pat_cursor *pc;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -971,69 +972,76 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) bestd[a] = -1;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
 
-  for (long long word_idx = 0; word_idx < n_words[model_idx]; word_idx++) {
-    a = 0;
-    //skip same word
-    for (b = 0; b < input_n_words; b++) if (found_row_idx[b] == word_idx) a = 1;
-    if (a == 1) continue;
+  pc = grn_pat_cursor_open(ctx, vocab[model_idx], NULL, 0, NULL, 0, 0, -1, GRN_CURSOR_BY_ID);
+  if (pc) {
+    long long word_idx;
+    while ((word_idx = grn_pat_cursor_next(ctx, pc)) != GRN_ID_NIL) {
+      //convert grn_id to idx of array
+      word_idx--;
+      a = 0;
+      //skip same word
+      for (b = 0; b < input_n_words; b++) if (found_row_idx[b] == word_idx) a = 1;
+      if (a == 1) continue;
 
-    dist = 0;
-    //calc distance
-    for (a = 0; a < dim_size[model_idx]; a++) dist += vec[a] * M[model_idx][a + word_idx * dim_size[model_idx]];
+      dist = 0;
+      //calc distance
+      for (a = 0; a < dim_size[model_idx]; a++) dist += vec[a] * M[model_idx][a + word_idx * dim_size[model_idx]];
 
-    //Insertion sort to bestw[N]
-    for (a = 0; a < N; a++) {
-      if (dist > bestd[a]) {
-        char key_name[GRN_TABLE_MAX_KEY_SIZE];
-        int key_len;
-        key_len = grn_pat_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
-        key_name[key_len] = '\0';
-        if (threshold > 0 && dist < threshold) {
+      //Insertion sort to bestw[N]
+      for (a = 0; a < N; a++) {
+        if (dist > bestd[a]) {
+          char key_name[GRN_TABLE_MAX_KEY_SIZE];
+          int key_len;
+          key_len = grn_pat_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
+          key_name[key_len] = '\0';
+          if (threshold > 0 && dist < threshold) {
+            break;
+          }
+          //トライでしぼりこみにする
+          if (is_sentence_vectors) {
+            if (strncmp(key_name, DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
+              break;
+            }
+          }
+          //トライでしぼりこみにする
+          if (white_term_filter != NULL) {
+            string s = key_name;
+            string t = white_term_filter;
+            if ( !RE2::FullMatch(s, t) ) {
+              break;
+            }
+          }
+          if (term_filter != NULL) {
+            string s = key_name;
+            string t = term_filter;
+            if ( RE2::FullMatch(s, t) ) {
+              break;
+            }
+          }
+          for (long long d = N - 1; d > a; d--) {
+            bestd[d] = bestd[d - 1];
+            strcpy(bestw[d], bestw[d - 1]);
+          }
+          bestd[a] = dist;
+
+          if (output_filter != NULL || is_phrase) {
+            string s = key_name;
+            if (is_phrase) {
+              re2::RE2::GlobalReplace(&s, "_", " ");
+            }
+            if (output_filter != NULL) {
+              re2::RE2::GlobalReplace(&s, output_filter, "");
+            }
+            strcpy(bestw[a], s.c_str());
+          } else {
+            strcpy(bestw[a], key_name);
+          }
+
           break;
         }
-        //トライでしぼりこみにする
-        if (is_sentence_vectors) {
-          if (strncmp(key_name, DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
-            break;
-          }
-        }
-        //トライでしぼりこみにする
-        if (white_term_filter != NULL) {
-          string s = key_name;
-          string t = white_term_filter;
-          if ( !RE2::FullMatch(s, t) ) {
-            break;
-          }
-        }
-        if (term_filter != NULL) {
-          string s = key_name;
-          string t = term_filter;
-          if ( RE2::FullMatch(s, t) ) {
-            break;
-          }
-        }
-        for (long long d = N - 1; d > a; d--) {
-          bestd[d] = bestd[d - 1];
-          strcpy(bestw[d], bestw[d - 1]);
-        }
-        bestd[a] = dist;
-
-        if (output_filter != NULL || is_phrase) {
-          string s = key_name;
-          if (is_phrase) {
-            re2::RE2::GlobalReplace(&s, "_", " ");
-          }
-          if (output_filter != NULL) {
-            re2::RE2::GlobalReplace(&s, output_filter, "");
-          }
-          strcpy(bestw[a], s.c_str());
-        } else {
-          strcpy(bestw[a], key_name);
-        }
-
-        break;
       }
     }
+    grn_pat_cursor_close(ctx, pc);
   }
 
   for (a = 0; a < N; a++) {
