@@ -535,7 +535,7 @@ const long long max_length_of_vocab_word = 255; // max length of vocabulary entr
 long long n_words[MAX_MODEL], dim_size[MAX_MODEL] = {0};
 float *M[MAX_MODEL] = {NULL};
 char *load_vocab[MAX_MODEL] = {NULL};
-static grn_hash *model_indexes = NULL;
+static grn_hash *model_idxes = NULL;
 
 static void
 word2vec_unload(grn_ctx *ctx, int i)
@@ -575,26 +575,26 @@ get_train_file_path(grn_ctx *ctx, char *file_name)
 }
 
 static int
-get_model_index(grn_ctx *ctx, const char *file_name)
+get_model_idx(grn_ctx *ctx, const char *file_name)
 {
-  int model_index = 0;
-  if (!model_indexes) {
-    model_indexes = grn_hash_create(ctx, NULL,
+  int model_idx = 0;
+  if (!model_idxes) {
+    model_idxes = grn_hash_create(ctx, NULL,
                                     GRN_TABLE_MAX_KEY_SIZE,
                                     0,
                                     GRN_OBJ_TABLE_HASH_KEY|GRN_OBJ_KEY_VAR_SIZE);
-    if (!model_indexes) {
+    if (!model_idxes) {
       return 0;
     }
   }
-  model_index = grn_hash_get(ctx, model_indexes,
+  model_idx = grn_hash_get(ctx, model_idxes,
                              file_name, strlen(file_name),
                              NULL);
-  if (model_index == GRN_ID_NIL) {
-    model_index = grn_hash_add(ctx, model_indexes,
+  if (model_idx == GRN_ID_NIL) {
+    model_idx = grn_hash_add(ctx, model_idxes,
                                file_name, strlen(file_name),
                                NULL, NULL);
-    if (model_index > MAX_MODEL || model_index == GRN_ID_NIL) {
+    if (model_idx > MAX_MODEL || model_idx == GRN_ID_NIL) {
       GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                      "[plugin][word2vec][load] "
                      "Couldn't get model index : %s",
@@ -602,14 +602,14 @@ get_model_index(grn_ctx *ctx, const char *file_name)
       return 0;
     }
   }
-  if (model_index) {
-    model_index--;
+  if (model_idx) {
+    model_idx--;
   }
-  return model_index;
+  return model_idx;
 }
 
 static grn_bool
-word2vec_load(grn_ctx *ctx, const char *file_name, int model_index)
+word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
 {
   FILE *f;
   float len;
@@ -625,32 +625,32 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_index)
     return GRN_FALSE;
   }
 
-  word2vec_unload(ctx, model_index);
+  word2vec_unload(ctx, model_idx);
 
-  fscanf(f, "%lld", &n_words[model_index]);
-  fscanf(f, "%lld", &dim_size[model_index]);
-  load_vocab[model_index] = (char *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_index] * max_length_of_vocab_word * sizeof(char));
-  M[model_index] = (float *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_index] * (long long)dim_size[model_index] * sizeof(float));
-  if (M[model_index] == NULL) {
+  fscanf(f, "%lld", &n_words[model_idx]);
+  fscanf(f, "%lld", &dim_size[model_idx]);
+  load_vocab[model_idx] = (char *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_idx] * max_length_of_vocab_word * sizeof(char));
+  M[model_idx] = (float *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_idx] * (long long)dim_size[model_idx] * sizeof(float));
+  if (M[model_idx] == NULL) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
                    "[plugin][word2vec][load] "
                    "Cannot allocate memory: %lld MB %lld %lld",
-                   (long long)n_words[model_index] * dim_size[model_index] * sizeof(float) / 1048576, n_words[model_index], dim_size[model_index]);
+                   (long long)n_words[model_idx] * dim_size[model_idx] * sizeof(float) / 1048576, n_words[model_idx], dim_size[model_idx]);
     return GRN_FALSE;
   }
-  for (b = 0; b < n_words[model_index]; b++) {
+  for (b = 0; b < n_words[model_idx]; b++) {
     a = 0;
     while (1) {
-      load_vocab[model_index][b * max_length_of_vocab_word + a] = fgetc(f);
-      if (feof(f) || (load_vocab[model_index][b * max_length_of_vocab_word + a] == ' ')) break;
-      if ((a < max_length_of_vocab_word) && (load_vocab[model_index][b * max_length_of_vocab_word + a] != '\n')) a++;
+      load_vocab[model_idx][b * max_length_of_vocab_word + a] = fgetc(f);
+      if (feof(f) || (load_vocab[model_idx][b * max_length_of_vocab_word + a] == ' ')) break;
+      if ((a < max_length_of_vocab_word) && (load_vocab[model_idx][b * max_length_of_vocab_word + a] != '\n')) a++;
     }
-    load_vocab[model_index][b * max_length_of_vocab_word + a] = 0;
-    for (a = 0; a < dim_size[model_index]; a++) fread(&M[model_index][a + b * dim_size[model_index]], sizeof(float), 1, f);
+    load_vocab[model_idx][b * max_length_of_vocab_word + a] = 0;
+    for (a = 0; a < dim_size[model_idx]; a++) fread(&M[model_idx][a + b * dim_size[model_idx]], sizeof(float), 1, f);
     len = 0;
-    for (a = 0; a < dim_size[model_index]; a++) len += M[model_index][a + b * dim_size[model_index]] * M[model_index][a + b * dim_size[model_index]];
+    for (a = 0; a < dim_size[model_idx]; a++) len += M[model_idx][a + b * dim_size[model_idx]] * M[model_idx][a + b * dim_size[model_idx]];
     len = sqrt(len);
-    for (a = 0; a < dim_size[model_index]; a++) M[model_index][a + b * dim_size[model_index]] /= len;
+    for (a = 0; a < dim_size[model_idx]; a++) M[model_idx][a + b * dim_size[model_idx]] /= len;
   }
   fclose(f);
 
@@ -672,7 +672,7 @@ command_word2vec_load(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj *
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
 
-  if (word2vec_load(ctx, file_name, get_model_index(ctx, file_name)) == GRN_TRUE) {
+  if (word2vec_load(ctx, file_name, get_model_idx(ctx, file_name)) == GRN_TRUE) {
     grn_ctx_output_bool(ctx, GRN_TRUE);
   } else {
     grn_ctx_output_bool(ctx, GRN_FALSE);
@@ -698,7 +698,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   const char *input;
   long long N = DEFAULT_N_SORT;
   char input_term[MAX_TERMS][max_length_of_vocab_word];
-  long long found_row_index[MAX_TERMS];
+  long long found_row_idx[MAX_TERMS];
   char op[MAX_TERMS] = {'+'};
   float dist, len, vec[max_size];
   char **bestw;
@@ -726,7 +726,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   char *sortby = NULL;
   unsigned int sortby_len = 0;
   char file_name[max_size];
-  int model_index = 0;
+  int model_idx = 0;
   grn_obj *table = NULL;
   grn_obj *res = NULL;
 
@@ -737,9 +737,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     strcpy(file_name, GRN_TEXT_VALUE(var));
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
-  model_index = get_model_index(ctx, file_name);
-  if (M[model_index] == NULL || load_vocab[model_index] == NULL) {
-    if (word2vec_load(ctx, file_name, model_index) == GRN_FALSE) {
+  model_idx = get_model_idx(ctx, file_name);
+  if (M[model_idx] == NULL || load_vocab[model_idx] == NULL) {
+    if (word2vec_load(ctx, file_name, model_idx) == GRN_FALSE) {
       grn_ctx_output_bool(ctx, GRN_FALSE);
       return NULL;
     }
@@ -877,9 +877,9 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   for (a = 0; a < input_n_words; a++) {
-    for (b = 0; b < n_words[model_index]; b++) if (!strcmp(&load_vocab[model_index][b * max_length_of_vocab_word], input_term[a])) break;
-    if (b == n_words[model_index]) b = -1;
-    found_row_index[a] = b;
+    for (b = 0; b < n_words[model_idx]; b++) if (!strcmp(&load_vocab[model_idx][b * max_length_of_vocab_word], input_term[a])) break;
+    if (b == n_words[model_idx]) b = -1;
+    found_row_idx[a] = b;
     if (b == -1) {
       if (expander_mode == GRN_EXPANDER_NONE) {
         output_header(ctx, 0);
@@ -928,32 +928,32 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   if (input_n_words == 1) {
-    for (a = 0; a < dim_size[model_index]; a++) vec[a] = 0;
+    for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (b = 0; b < input_n_words; b++) {
-      if (found_row_index[b] == -1) continue;
+      if (found_row_idx[b] == -1) continue;
       //見つかった行数から次元数の少数値をsum
       //１次元のfloat配列を２次元的にアクセスしている
       //word1 [0.01, 0.002, 0.003, ...] の配列部分のsum
-      for (a = 0; a < dim_size[model_index]; a++) vec[a] += M[model_index][a + found_row_index[b] * dim_size[model_index]];
+      for (a = 0; a < dim_size[model_idx]; a++) vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
     }
   } else {
-    for (a = 0; a < dim_size[model_index]; a++) vec[a] = 0;
-    for (a = 0; a < dim_size[model_index]; a++) {
+    for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
+    for (a = 0; a < dim_size[model_idx]; a++) {
       for (b = 0; b < input_n_words; b++) {
-        if (found_row_index[b] == -1) continue;
+        if (found_row_idx[b] == -1) continue;
         if (op[b] == '-') {
-          vec[a] -= M[model_index][a + found_row_index[b] * dim_size[model_index]];
+          vec[a] -= M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
         } else {
-          vec[a] += M[model_index][a + found_row_index[b] * dim_size[model_index]];
+          vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
         }
       }
     }
   }
 
   len = 0;
-  for (a = 0; a < dim_size[model_index]; a++) len += vec[a] * vec[a];
+  for (a = 0; a < dim_size[model_idx]; a++) len += vec[a] * vec[a];
   len = sqrt(len);
-  for (a = 0; a < dim_size[model_index]; a++) vec[a] /= len;
+  for (a = 0; a < dim_size[model_idx]; a++) vec[a] /= len;
 
   bestw = (char **)GRN_PLUGIN_MALLOC(ctx, N * sizeof(char *));
   for (a = 0; a < N; a++) {
@@ -963,15 +963,15 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   for (a = 0; a < N; a++) bestd[a] = -1;
   for (a = 0; a < N; a++) bestw[a][0] = 0;
 
-  for (long long word_idx = 0; word_idx < n_words[model_index]; word_idx++) {
+  for (long long word_idx = 0; word_idx < n_words[model_idx]; word_idx++) {
     a = 0;
     //skip same word
-    for (b = 0; b < input_n_words; b++) if (found_row_index[b] == word_idx) a = 1;
+    for (b = 0; b < input_n_words; b++) if (found_row_idx[b] == word_idx) a = 1;
     if (a == 1) continue;
 
     dist = 0;
     //calc distance
-    for (a = 0; a < dim_size[model_index]; a++) dist += vec[a] * M[model_index][a + word_idx * dim_size[model_index]];
+    for (a = 0; a < dim_size[model_idx]; a++) dist += vec[a] * M[model_idx][a + word_idx * dim_size[model_idx]];
 
     //Insertion sort to bestw[N]
     for (a = 0; a < N; a++) {
@@ -980,19 +980,19 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           break;
         }
         if (is_sentence_vectors) {
-          if (strncmp(&load_vocab[model_index][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
+          if (strncmp(&load_vocab[model_idx][word_idx * max_length_of_vocab_word], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN) != 0) {
             break;
           }
         }
         if (white_term_filter != NULL) {
-          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          string s = &load_vocab[model_idx][word_idx * max_length_of_vocab_word];
           string t = white_term_filter;
           if ( !RE2::FullMatch(s, t) ) {
             break;
           }
         }
         if (term_filter != NULL) {
-          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          string s = &load_vocab[model_idx][word_idx * max_length_of_vocab_word];
           string t = term_filter;
           if ( RE2::FullMatch(s, t) ) {
             break;
@@ -1005,7 +1005,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         bestd[a] = dist;
 
         if (output_filter != NULL || is_phrase) {
-          string s = &load_vocab[model_index][word_idx * max_length_of_vocab_word];
+          string s = &load_vocab[model_idx][word_idx * max_length_of_vocab_word];
           if (is_phrase) {
             re2::RE2::GlobalReplace(&s, "_", " ");
           }
@@ -1015,7 +1015,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           strcpy(bestw[a], s.c_str());
         } else {
           //charの１次元配列からword取得
-          strcpy(bestw[a], &load_vocab[model_index][word_idx * max_length_of_vocab_word]);
+          strcpy(bestw[a], &load_vocab[model_idx][word_idx * max_length_of_vocab_word]);
         }
 
         break;
@@ -1758,9 +1758,9 @@ GRN_PLUGIN_FIN(GNUC_UNUSED grn_ctx *ctx)
   for (int i = 0; i < MAX_MODEL; i++) {
     word2vec_unload(ctx, i);
   }
-  if (model_indexes) {
-    grn_hash_close(ctx, model_indexes);
-    model_indexes = NULL;
+  if (model_idxes) {
+    grn_hash_close(ctx, model_idxes);
+    model_idxes = NULL;
   }
   mecab_fin(ctx);
 
