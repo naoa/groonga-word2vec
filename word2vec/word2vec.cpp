@@ -1005,7 +1005,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
           if (output_filter != NULL) {
             string s = &load_vocab[model_index][c * max_w];
-            re2::RE2::GlobalReplace(&s, output_filter, " ");
+            re2::RE2::GlobalReplace(&s, output_filter, "");
             strcpy(bestw[a], s.c_str());
           } else {
             strcpy(bestw[a], &load_vocab[model_index][c * max_w]);
@@ -1085,7 +1085,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         } else {
           if (output_filter != NULL) {
             string s = &load_vocab[model_index][c * max_w];
-            re2::RE2::GlobalReplace(&s, output_filter, " ");
+            re2::RE2::GlobalReplace(&s, output_filter, "");
             add_record_value(ctx, res, (char*)s.c_str(), s.length(), dist);
           } else {
             add_record_value(ctx, res, &load_vocab[model_index][c * max_w], strlen(&load_vocab[model_index][c * max_w]), dist);
