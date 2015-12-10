@@ -22,14 +22,5 @@ word2vec_train --min_count 1
 [[0,0.0,0.0],true]
 word2vec_load
 [[0,0.0,0.0],true]
-#|w| str=</s> 
-#|w| str=fulltextsearch 
-#|w| str=library 
-#|w| str=groonga 
-#|w| str=rroonga 
-#|w| str=database 
-#|w| str=server 
-#|w| str=mysql 
-#|w| str=postgresql 
 word2vec_unload
 [[0,0.0,0.0],true]
