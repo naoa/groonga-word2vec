@@ -57,7 +57,7 @@ JSON
 | read_vovab_file    | read_vocab_file | NULL |
 | threads    | 学習時のスレッド数 | 12 |
 | size     |  次元数 | 100 |
-| debug    | debug  学習中の標準出力を止める場合は0 | 2 |
+| debug    | debug Groongaのログに出力される | 2 |
 | binary    | モデルファイルをテキスト形式にする場合は0  distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
 | cbow    | skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
@@ -73,15 +73,10 @@ JSON
 * 出力形式  
 JSON
 
-なお、word2vecのデバッグ出力は標準出力されます。 word2vecのエラーは標準エラー出力に出力されます。
-
 * 実行例
 
 ```
 > word2vec_train
-Vocab size: 976190
-Words in train file: 219474851
-Alpha: 0.000100  Progress: 99.60%  Words/thread/sec: 7.07k
 [[0,0.0,0.0],true]
 ```
 

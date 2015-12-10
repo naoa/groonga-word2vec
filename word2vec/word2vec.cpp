@@ -1628,7 +1628,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
 
   {
     char buff[1024];
-    GRN_LOG(ctx, GRN_LOG_DEBUG, "[word2vec_train] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
+    GRN_LOG(ctx, GRN_LOG_NOTICE, "[word2vec_train] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
     FILE *fp = popen(GRN_TEXT_VALUE(&cmd), "r");
     while (fgets(buff, sizeof(buff), fp)) {
       GRN_LOG(ctx, GRN_LOG_NOTICE, "[word2vec_train] %s", right_trim(buff, '\n'));
