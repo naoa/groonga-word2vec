@@ -534,7 +534,6 @@ const long long max_length_of_vocab_word = 255; // max length of vocabulary entr
 
 long long n_words[MAX_MODEL], dim_size[MAX_MODEL] = {0};
 float *M[MAX_MODEL] = {NULL};
-char *load_vocab[MAX_MODEL] = {NULL};
 static grn_hash *model_idxes = NULL;
 static grn_obj *vocab[MAX_MODEL]  = {NULL};
 
@@ -605,10 +604,6 @@ word2vec_unload(grn_ctx *ctx, int i)
     GRN_PLUGIN_FREE(ctx, M[i]);
     M[i] = NULL;
   }
-  if (load_vocab[i] != NULL){
-    GRN_PLUGIN_FREE(ctx, load_vocab[i]);
-    load_vocab[i] = NULL;
-  }
   n_words[i] = 0;
   dim_size[i] = 0;
 }
@@ -634,7 +629,6 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
 
   fscanf(f, "%lld", &n_words[model_idx]);
   fscanf(f, "%lld", &dim_size[model_idx]);
-  load_vocab[model_idx] = (char *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_idx] * max_length_of_vocab_word * sizeof(char));
   M[model_idx] = (float *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_idx] * (long long)dim_size[model_idx] * sizeof(float));
 
   vocab[model_idx] = grn_table_create(ctx, NULL, 0, NULL,
