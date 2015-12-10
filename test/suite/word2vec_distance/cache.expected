@@ -1,0 +1,132 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1
+[[0,0.0,0.0],true]
+word2vec_distance "Groonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      8
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ]
+    ],
+    [
+      "rroonga",
+      0.12582902610302
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165
+    ],
+    [
+      "mysql",
+      -0.0158039312809706
+    ],
+    [
+      "postgresql",
+      -0.0281914249062538
+    ],
+    [
+      "library",
+      -0.0417644791305065
+    ],
+    [
+      "database",
+      -0.0530047751963139
+    ],
+    [
+      "server",
+      -0.08939129114151
+    ],
+    [
+      "</s>",
+      -0.100139416754246
+    ]
+  ]
+]
+word2vec_distance "Rroonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      8
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ]
+    ],
+    [
+      "groonga",
+      0.12582902610302
+    ],
+    [
+      "database",
+      0.113764502108097
+    ],
+    [
+      "server",
+      0.0604338981211185
+    ],
+    [
+      "fulltextsearch",
+      0.0564095415174961
+    ],
+    [
+      "mysql",
+      -0.0134698543697596
+    ],
+    [
+      "</s>",
+      -0.0144996037706733
+    ],
+    [
+      "postgresql",
+      -0.0580276250839233
+    ],
+    [
+      "library",
+      -0.128371566534042
+    ]
+  ]
+]

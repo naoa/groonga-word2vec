@@ -535,7 +535,7 @@ const long long max_length_of_vocab_word = 255; // max length of vocabulary entr
 long long n_words[MAX_MODEL], dim_size[MAX_MODEL] = {0};
 float *M[MAX_MODEL] = {NULL};
 static grn_hash *model_idxes = NULL;
-static grn_obj *vocab[MAX_MODEL]  = {NULL};
+static grn_pat *vocab[MAX_MODEL]  = {NULL};
 
 static void
 get_model_file_path(grn_ctx *ctx, char *file_name)
@@ -597,7 +597,7 @@ static void
 word2vec_unload(grn_ctx *ctx, int i)
 {
   if (vocab[i] != NULL) {
-    grn_obj_unlink(ctx, vocab[i]);
+    grn_pat_close(ctx, vocab[i]);
     vocab[i] = NULL;
   }
   if (M[i] != NULL){
@@ -631,10 +631,10 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
   fscanf(f, "%lld", &dim_size[model_idx]);
   M[model_idx] = (float *)GRN_PLUGIN_MALLOC(ctx, (long long)n_words[model_idx] * (long long)dim_size[model_idx] * sizeof(float));
 
-  vocab[model_idx] = grn_table_create(ctx, NULL, 0, NULL,
-                                      GRN_TABLE_PAT_KEY,
-                                      grn_ctx_at(ctx, GRN_DB_SHORT_TEXT),
-                                      NULL);
+  vocab[model_idx] = grn_pat_create(ctx, NULL,
+                                    GRN_TABLE_MAX_KEY_SIZE,
+                                    0,
+                                    GRN_OBJ_TABLE_PAT_KEY|GRN_OBJ_KEY_VAR_SIZE);
 
   if (vocab[model_idx] == NULL) {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
@@ -654,7 +654,7 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
       if ((a < max_length_of_vocab_word) && (c != '\n')) a++;
     }
 
-    if (!grn_table_add(ctx, vocab[model_idx], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf), NULL)) {
+    if (!grn_pat_add(ctx, vocab[model_idx], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf), NULL, NULL)) {
       GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING, "[word2vec_load] Faild load vocab");
       return GRN_FALSE;
     }
@@ -891,7 +891,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   }
 
   for (a = 0; a < input_n_words; a++) {
-    found_row_idx[a] = grn_table_get(ctx, vocab[model_idx], input_term[a], strlen(input_term[a]));
+    found_row_idx[a] = grn_pat_get(ctx, vocab[model_idx], input_term[a], strlen(input_term[a]), NULL);
+
     if (found_row_idx[a] != GRN_ID_NIL) {
       found_row_idx[a]--;
     }
@@ -990,7 +991,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       if (dist > bestd[a]) {
         char key_name[GRN_TABLE_MAX_KEY_SIZE];
         int key_len;
-        key_len = grn_table_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
+        key_len = grn_pat_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
         key_name[key_len] = '\0';
         if (threshold > 0 && dist < threshold) {
           break;
