@@ -20,30 +20,16 @@ dump_to_train_file Entries title,tag,tags
 [[0,0.0,0.0],true]
 word2vec_train --min_count 1
 [[0,0.0,0.0],true]
-word2vec_distance "Groonga" --white_term_filter "rroonga"
-[
-  [
-    0,
-    0.0,
-    0.0
-  ],
-  [
-    [
-      1
-    ],
-    [
-      [
-        "_key",
-        "ShortText"
-      ],
-      [
-        "_value",
-        "Float"
-      ]
-    ],
-    [
-      "rroonga",
-      0.12582902610302
-    ]
-  ]
-]
+word2vec_load
+[[0,0.0,0.0],true]
+#|w| str=</s> 
+#|w| str=fulltextsearch 
+#|w| str=library 
+#|w| str=groonga 
+#|w| str=rroonga 
+#|w| str=database 
+#|w| str=server 
+#|w| str=mysql 
+#|w| str=postgresql 
+word2vec_unload
+[[0,0.0,0.0],true]
