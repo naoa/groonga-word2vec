@@ -618,7 +618,7 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
 
   f = fopen(file_name, "rb");
   if (f == NULL) {
-    GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                    "[word2vec_load] "
                    "Input file not found : %s",
                    file_name);
@@ -637,7 +637,7 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
                                     GRN_OBJ_TABLE_PAT_KEY|GRN_OBJ_KEY_VAR_SIZE);
 
   if (vocab[model_idx] == NULL) {
-    GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING,
+    GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR,
                    "[word2vec_load] "
                    "Cannot create vocab table");
     return GRN_FALSE;
@@ -655,7 +655,7 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
     }
 
     if (!grn_pat_add(ctx, vocab[model_idx], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf), NULL, NULL)) {
-      GRN_PLUGIN_LOG(ctx, GRN_LOG_WARNING, "[word2vec_load] Faild load vocab");
+      GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_load] Faild load vocab");
       return GRN_FALSE;
     }
     for (a = 0; a < dim_size[model_idx]; a++) fread(&M[model_idx][a + b * dim_size[model_idx]], sizeof(float), 1, f);
