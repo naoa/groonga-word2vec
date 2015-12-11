@@ -60,7 +60,7 @@ OSが実行可能なパスにword2vecコマンドが必要です。デフォル�
 | threads    | 学習時のスレッド数 | 12 |
 | size     |  次元数 | 100 |
 | debug    | debug Groongaのログに出力される | 2 |
-| binary    | モデルファイルをテキスト形式にする場合は0  distanceコマンドはバイナリ形式(1)しか対応していない | 1 |
+| binary    | モデルファイルをテキスト形式にする場合は0 | 1 |
 | cbow    | skip-gramを使う場合は0  cbowを使う場合は1 | 0 |
 | alpha    | alpha | 0.025 cbowの場合0.05 |
 | window    | 文脈とする前後の幅 | 5 |
@@ -105,6 +105,7 @@ JSON
 | output_filter   | 出力をさせる単語から除去する正規表現(全置換) | NULL |
 | mecab_option   | MeCabのオプション | NULL |
 | file_path   | 学習済みモデルファイル | `{groonga_db}_w2v.bin` |
+| binary    | テキスト形式のモデルファイルを使う場合は0 | 1 |
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | edit_distance   | 出力結果を編集距離の近い順にする場合1  編集距離は_scoreにセットされる | 0 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ  1:クエリ展開 ((query1) OR (query2)) | 0 |
@@ -222,7 +223,8 @@ Groongaのデータベースを閉じると、自動的にアンロードされ�
 
 | arg        | description | default      |
 |:-----------|:------------|:-------------|
-| file_path  | 学習済みモデルファイル(バイナリ形式) | `{Groongaのデータベースパス}+_w2v.bin` |
+| file_path  | 学習済みモデルファイル | `{Groongaのデータベースパス}+_w2v.bin` |
+| binary    | テキスト形式のモデルファイルを使う場合は0 | 1 |
 
 * 出力形式
 JSON (true or false)

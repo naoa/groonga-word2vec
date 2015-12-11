@@ -590,7 +590,7 @@ word2vec_unload(grn_ctx *ctx, int i)
 }
 
 static grn_bool
-word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
+word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx, int binary)
 {
   FILE *f;
   float len;
@@ -628,18 +628,36 @@ word2vec_load(grn_ctx *ctx, const char *file_name, int model_idx)
   for (b = 0; b < n_words[model_idx]; b++) {
     a = 0;
     GRN_BULK_REWIND(&buf);
-    while (1) {
-      char c = fgetc(f);
-      if (c != '\n' && c!= ' ') GRN_TEXT_PUTC(ctx, &buf, c);
-      if (feof(f) || (c == ' ')) break;
-      if ((a < max_length_of_vocab_word) && (c != '\n')) a++;
-    }
+    if (binary == 0) {
+      char format[20];
+      char word[max_length_of_vocab_word];
+      float value;
+      sprintf(format,"%%%ds",max_length_of_vocab_word);
+      fscanf(f, format, word);
+      if (!grn_pat_add(ctx, vocab[model_idx], word, strlen(word), NULL, NULL)) {
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_load] Faild load vocab");
+        grn_obj_unlink(ctx, &buf);
+        return GRN_FALSE;
+      }
+      for (a = 0; a < dim_size[model_idx]; a++) {
+        fscanf(f, "%f", &M[model_idx][a + b * dim_size[model_idx]]);
+        len += M[model_idx][a + b * dim_size[model_idx]] * M[model_idx][a + b * dim_size[model_idx]];
+      }
+    } else {
+      while (1) {
+        char c = fgetc(f);
+        if (c != '\n' && c!= ' ') GRN_TEXT_PUTC(ctx, &buf, c);
+        if (feof(f) || (c == ' ')) break;
+        if ((a < max_length_of_vocab_word) && (c != '\n')) a++;
+      }
 
-    if (!grn_pat_add(ctx, vocab[model_idx], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf), NULL, NULL)) {
-      GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_load] Faild load vocab");
-      return GRN_FALSE;
+      if (!grn_pat_add(ctx, vocab[model_idx], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf), NULL, NULL)) {
+        GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec_load] Faild load vocab");
+        grn_obj_unlink(ctx, &buf);
+        return GRN_FALSE;
+      }
+      for (a = 0; a < dim_size[model_idx]; a++) fread(&M[model_idx][a + b * dim_size[model_idx]], sizeof(float), 1, f);
     }
-    for (a = 0; a < dim_size[model_idx]; a++) fread(&M[model_idx][a + b * dim_size[model_idx]], sizeof(float), 1, f);
     len = 0;
     for (a = 0; a < dim_size[model_idx]; a++) len += M[model_idx][a + b * dim_size[model_idx]] * M[model_idx][a + b * dim_size[model_idx]];
     len = sqrt(len);
@@ -657,16 +675,20 @@ command_word2vec_load(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj *
 {
   char file_name[max_size];
   grn_obj *var;
+  int binary = 1;
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
-
   if (GRN_TEXT_LEN(var) == 0) {
     get_model_file_path(ctx, file_name);
   } else {
     strcpy(file_name, GRN_TEXT_VALUE(var));
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
+  var = grn_plugin_proc_get_var(ctx, user_data, "binary", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    binary = atoi(GRN_TEXT_VALUE(var));
+  }
 
-  if (word2vec_load(ctx, file_name, get_model_idx(ctx, file_name)) == GRN_TRUE) {
+  if (word2vec_load(ctx, file_name, get_model_idx(ctx, file_name), binary) == GRN_TRUE) {
     grn_ctx_output_bool(ctx, GRN_TRUE);
   } else {
     grn_ctx_output_bool(ctx, GRN_FALSE);
@@ -725,6 +747,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   grn_obj *table = NULL;
   grn_obj *res = NULL;
   grn_pat_cursor *pc;
+  int binary = 1;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -733,9 +756,14 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     strcpy(file_name, GRN_TEXT_VALUE(var));
     file_name[GRN_TEXT_LEN(var)] = '\0';
   }
+  var = grn_plugin_proc_get_var(ctx, user_data, "binary", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    binary = atoi(GRN_TEXT_VALUE(var));
+  }
+
   model_idx = get_model_idx(ctx, file_name);
   if (M[model_idx] == NULL || vocab[model_idx] == NULL) {
-    if (word2vec_load(ctx, file_name, model_idx) == GRN_FALSE) {
+    if (word2vec_load(ctx, file_name, model_idx, binary) == GRN_FALSE) {
       grn_ctx_output_bool(ctx, GRN_FALSE);
       return NULL;
     }
@@ -1682,7 +1710,8 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_expr_var vars[19];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
-  grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 1, vars);
+  grn_plugin_expr_var_init(ctx, &vars[1], "binary", -1);
+  grn_plugin_command_create(ctx, "word2vec_load", -1, command_word2vec_load, 2, vars);
   grn_plugin_command_create(ctx, "word2vec_unload", -1, command_word2vec_unload, 0, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "term", -1);
@@ -1696,14 +1725,15 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[8], "output_filter", -1);
   grn_plugin_expr_var_init(ctx, &vars[9], "mecab_option", -1);
   grn_plugin_expr_var_init(ctx, &vars[10], "file_path", -1);
-  grn_plugin_expr_var_init(ctx, &vars[11], "expander_mode", -1);
-  grn_plugin_expr_var_init(ctx, &vars[12], "is_phrase", -1);
-  grn_plugin_expr_var_init(ctx, &vars[13], "edit_distance", -1);
-  grn_plugin_expr_var_init(ctx, &vars[14], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 18, vars);
+  grn_plugin_expr_var_init(ctx, &vars[11], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "expander_mode", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "is_phrase", -1);
+  grn_plugin_expr_var_init(ctx, &vars[14], "edit_distance", -1);
+  grn_plugin_expr_var_init(ctx, &vars[15], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 19, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);
