@@ -15,23 +15,6 @@
   License along with this library; if not, write to the Free
   Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
   MA 02110-1301, USA
-
-  This file includes the original word2vec's code. https://code.google.com/p/word2vec/
-  The following is the header of the file:
-
-    Copyright 2013 Google Inc. All Rights Reserved.
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
 */
 
 #include <stdio.h>
@@ -79,6 +62,16 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define MAX_COLUMNS 20
 #define MAX_STRING 100
 #define MAX_TERMS 100
+
+const long long max_size = 2000; // max length of strings
+const long long max_length_of_vocab_word = 255; // max length of vocabulary entries
+
+#define MAX_MODEL 20
+
+long long n_words[MAX_MODEL], dim_size[MAX_MODEL] = {0};
+float *M[MAX_MODEL] = {NULL};
+static grn_hash *model_idxes = NULL;
+static grn_pat *vocab[MAX_MODEL]  = {NULL};
 
 typedef struct {
   double score;
@@ -524,18 +517,6 @@ normalize(grn_ctx *ctx, grn_obj *buf,
 
   return ret_normalized;
 }
-
-/* distance.c */
-
-const long long max_size = 2000; // max length of strings
-const long long max_length_of_vocab_word = 255; // max length of vocabulary entries
-
-#define MAX_MODEL 20
-
-long long n_words[MAX_MODEL], dim_size[MAX_MODEL] = {0};
-float *M[MAX_MODEL] = {NULL};
-static grn_hash *model_idxes = NULL;
-static grn_pat *vocab[MAX_MODEL]  = {NULL};
 
 static void
 get_model_file_path(grn_ctx *ctx, char *file_name)
