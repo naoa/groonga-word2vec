@@ -1,0 +1,17 @@
+plugin_register word2vec/word2vec
+
+table_create Tags TABLE_PAT_KEY ShortText
+
+table_create Entries TABLE_NO_KEY
+column_create Entries title COLUMN_SCALAR ShortText
+
+load --table Entries
+[
+{"title": "a"},
+{"title": "a1"},
+{"title": "a2"}
+]
+
+dump_to_train_file Entries title
+word2vec_train --min_count 1
+word2vec_distance "a1"

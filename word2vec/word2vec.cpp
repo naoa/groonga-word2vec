@@ -314,10 +314,12 @@ right_trim(char *s, char del) {
   }
   i = strlen(s);
   while ( --i >= 0 && s[i] == del ) count++;
-  if (i == 0) {
-    s[i] = '\0';
-  } else {
-    s[i+1] = '\0';
+  if (count > 0) {
+    if (i == 0) {
+      s[i] = '\0';
+    } else if (i > 0) {
+      s[i+1] = '\0';
+    }
   }
   return s;
 }

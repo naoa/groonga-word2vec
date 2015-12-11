@@ -1,0 +1,54 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "a"},
+{"title": "a1"},
+{"title": "a2"}
+]
+[[0,0.0,0.0],3]
+dump_to_train_file Entries title
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1
+[[0,0.0,0.0],true]
+word2vec_distance "a1"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      3
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ]
+    ],
+    [
+      "a",
+      0.183403044939041
+    ],
+    [
+      "</s>",
+      0.0981750339269638
+    ],
+    [
+      "a2",
+      -0.041764497756958
+    ]
+  ]
+]
