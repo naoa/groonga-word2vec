@@ -14,3 +14,7 @@ if NOINST_WORD2VEC
 else
 bin_PROGRAMS += word2vec/word2vec
 endif
+if NOINST_GLOVE
+else
+bin_PROGRAMS += glove/cooccur glove/glove glove/shuffle glove/vocab_count
+endif

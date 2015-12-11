@@ -1,5 +1,5 @@
 AC_PREREQ(2.59)
-AC_INIT([groonga-word2vec], 0.0.1, [naoya@createfield.com])
+AC_INIT([groonga-word2vec], 0.0.2, [naoya@createfield.com])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([word2vec/word2vec.cpp])
@@ -109,6 +109,17 @@ AC_ARG_ENABLE(word2vec,
 )
 AM_CONDITIONAL(NOINST_WORD2VEC, test "x$enable_word2vec" = "xno")
 
+# GloVe
+
+AC_ARG_ENABLE(glove,
+  [ --disable-glove   Don't install GloVe binary],
+  [case "${enableval}" in
+     yes | no ) enable_glove="${enableval}" ;;
+     *) AC_MSG_ERROR(bad value ${enableval} for --disable-glove) ;;
+   esac]
+)
+AM_CONDITIONAL(NOINST_GLOVE, test "x$enable_glove" = "xno")
+
 GROONGA_REQUIRED_VERSION=4.0.3
 PKG_CHECK_MODULES([GROONGA], [groonga >= ${GROONGA_REQUIRED_VERSION}])
 
@@ -161,4 +172,10 @@ if test "x$enable_word2vec" = "xno"; then
   echo "  Word2Vec: $enable_word2vec"
 else
   echo "  Word2Vec: yes"
+fi
+echo
+if test "x$enable_glove" = "xno"; then
+  echo "  GloVe: $enable_glove"
+else
+  echo "  GloVe: yes"
 fi
