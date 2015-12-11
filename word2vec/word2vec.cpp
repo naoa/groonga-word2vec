@@ -1169,17 +1169,9 @@ filter_and_add_vector_element(grn_ctx *ctx,
   right_trim((char *)*column_value_p, '\n');
   right_trim((char *)*column_value_p, ' ');
 
-  if (option.mecab_option != NULL && option.is_mecab[i] &&
-      strlen(*column_value_p) > 0){
-    *column_value_p = sparse(ctx, *column_value_p, option.mecab_option);
-    right_trim((char *)*column_value_p, '\n');
-    right_trim((char *)*column_value_p, ' ');
-  }
-
   if (strlen(*column_value_p) == 0){
     return GRN_FALSE;
-  }
-  else {
+  } else {
     for (int w = 0; w < option.weights[i]; w++) {
       grn_vector_add_element(ctx, vbuf,
                              *column_value_p,
