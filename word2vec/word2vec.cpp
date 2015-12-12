@@ -957,9 +957,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
   if (input_n_words == 1) {
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
-    for (b = 0; b < input_n_words; b++) {
-      for (a = 0; a < dim_size[model_idx]; a++) vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
-    }
+    for (a = 0; a < dim_size[model_idx]; a++) vec[a] += M[model_idx][a + found_row_idx[b] * dim_size[model_idx]];
   } else {
     for (a = 0; a < dim_size[model_idx]; a++) vec[a] = 0;
     for (a = 0; a < dim_size[model_idx]; a++) {
