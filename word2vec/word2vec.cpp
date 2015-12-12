@@ -882,22 +882,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
          }
        }
     }
-    /*
-    array_len = split(result_array, NELEMS(result_array), input, " ");
-    for (unsigned int i = 0; i < array_len; i++) {
-      if (result_array[i][0] == '+'){
-        op[op_row] = '+';
-        op_row++;
-      }
-      else if (result_array[i][0] == '-'){
-        op[op_row] = '-';
-        op_row++;
-      } else {
-        strcpy(input_term[input_n_words], result_array[i]);
-        input_n_words++;
-      }
-    }
-    */
     grn_obj_unlink(ctx, &buf);
   }
 
