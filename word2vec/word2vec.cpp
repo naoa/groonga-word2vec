@@ -46,9 +46,6 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define GRN_EXPANDER_NONE 0
 #define GRN_EXPANDER_EXPANDED 1
 
-#define SPLIT_BUF_SIZE 4096
-#define NELEMS(a) (sizeof(a) / sizeof(a[0]))
-
 #define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
 
 #define DEFAULT_SORTBY          "-_score"
@@ -60,7 +57,6 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define DOC_ID_PREFIX_LEN 7
 
 #define MAX_COLUMNS 20
-#define MAX_STRING 100
 #define MAX_TERMS 100
 
 const long long max_size = 2000; // max length of strings
@@ -277,32 +273,6 @@ output(grn_ctx *ctx, grn_obj *res, int offset, int limit, const char *oc_val, un
   } else {
     GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec] cannot create temporary sort table.");
   }
-}
-
-static int
-in(const char *s, const char c)
-{
-  int i;
-  for (i = 0; s[i] != '\0'; i++)
-    if (s[i] == c) return 1;
-  return 0;
-}
-
-static int
-split(char *ary[], int len, const char *s, const char *delimiter)
-{
-  char buf[SPLIT_BUF_SIZE];
-  int i, j;
-  for (i = 0; i < len && *s != '\0'; i++) {
-    while (in(delimiter, *s))
-      s++;
-    for (j = 0; j < SPLIT_BUF_SIZE && *s != '\0' && !in(delimiter, *s); j++, s++)
-      buf[j] = *s;
-    buf[j] = '\0';
-    if (j == 0) break;
-    ary[i] = strdup(buf);
-  }
-  return i;
 }
 
 static char *
@@ -888,6 +858,31 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       re2::RE2::GlobalReplace(&s, " ", "_");
       strcpy((char *)input, s.c_str());
     }
+    {
+       const char *s, *e, *l;
+       s = input;
+       e = input;
+       l = input + strlen(input) + 1;
+       for (e = input; e < l ; e++) {
+         if (e[0] == ' ' || e[0] == '\0') {
+           memcpy(input_term[input_n_words], s, e - s);
+           input_term[input_n_words][e - s] = '\0';
+           input_n_words++;
+           s = e + 1;
+         } else if (e > input && e < l - 1 && e[-1] == ' ' && e[0] == '+' && e[1] == ' ') {
+            op[op_row] = '+';
+            op_row++;
+            e++;
+            s = e + 1;
+         } else if (e > input && e < l - 1 && e[-1] == ' ' && e[0] == '-' && e[1] == ' ') {
+            op[op_row] = '-';
+            op_row++;
+            e++;
+            s = e + 1;
+         }
+       }
+    }
+    /*
     array_len = split(result_array, NELEMS(result_array), input, " ");
     for (unsigned int i = 0; i < array_len; i++) {
       if (result_array[i][0] == '+'){
@@ -902,6 +897,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         input_n_words++;
       }
     }
+    */
     grn_obj_unlink(ctx, &buf);
   }
 
@@ -1201,14 +1197,27 @@ column_to_train_file(grn_ctx *ctx, char *train_file,
   grn_obj *table = grn_ctx_get(ctx, table_name, table_len);
   if (table) {
     FILE *fo = fopen(train_file, "wb");
-    char *column_name_array[MAX_COLUMNS];
-    int i, t, array_len;
+    char column_name_array[MAX_COLUMNS][max_size];
+    int i, t, array_len = 0;
     grn_obj *columns[MAX_COLUMNS];
     grn_table_cursor *cur;
     grn_obj *result = NULL;
 
     /* parse column option */
-    array_len = split(column_name_array, NELEMS(column_name_array), column_names, ",");
+    {
+       const char *s, *e, *l;
+       s = column_names;
+       e = column_names;
+       l = column_names + strlen(column_names) + 1;
+       for (e = column_names; e < l ; e++) {
+         if (e[0] == ',' || e[0] == '\0') {
+           memcpy(column_name_array[array_len], s, e - s);
+           column_name_array[array_len][e - s] = '\0';
+           array_len++;
+           s = e + 1;
+         }
+       }
+    }
     for (i = 0; i < array_len; i++) {
       if (column_name_array[i][strlen(column_name_array[i]) - 1] == ']') {
         string s = column_name_array[i];
@@ -1408,7 +1417,7 @@ command_dump_to_train_file(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_
   char *input_filter = NULL;
   char *mecab_option = (char *)"-Owakati";
   grn_bool is_sentence_vectors = GRN_FALSE;
-  char train_file[MAX_STRING];
+  char train_file[max_size];
 
   var = grn_plugin_proc_get_var(ctx, user_data, "table", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -1501,7 +1510,7 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
                        grn_user_data *user_data)
 {
   grn_obj *var;
-  char train_file[MAX_STRING], output_file[MAX_STRING];
+  char train_file[max_size], output_file[max_size];
   grn_bool is_output_file = GRN_FALSE;
   grn_obj cmd;
   GRN_TEXT_INIT(&cmd, 0);

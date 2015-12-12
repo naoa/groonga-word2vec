@@ -1,0 +1,208 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1 --negative 0 --cbow 0 --hs 0 --binary 1
+[[0,0.0,0.0],true]
+word2vec_distance "+ Groonga Rroonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]
+word2vec_distance "Groonga + Rroonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      7
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ]
+    ],
+    [
+      "fulltextsearch",
+      0.06215425953269
+    ],
+    [
+      "database",
+      0.0404916107654572
+    ],
+    [
+      "server",
+      -0.0192978121340275
+    ],
+    [
+      "mysql",
+      -0.0195086859166622
+    ],
+    [
+      "postgresql",
+      -0.0574582517147064
+    ],
+    [
+      "</s>",
+      -0.0763978809118271
+    ],
+    [
+      "library",
+      -0.113382309675217
+    ]
+  ]
+]
+word2vec_distance "Groonga +Rroonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]
+word2vec_distance "Groonga+ Rroonga"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]
+word2vec_distance "Groonga Rroonga+"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]
+word2vec_distance "Groonga Rroonga +"
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      0
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_score",
+        "Float"
+      ]
+    ],
+    [
+      "Output of dictionary word!",
+      0.0
+    ]
+  ]
+]
