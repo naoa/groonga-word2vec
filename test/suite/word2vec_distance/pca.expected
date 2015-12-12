@@ -1,0 +1,107 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1 --negative 0 --cbow 0 --hs 0 --binary 1
+[[0,0.0,0.0],true]
+word2vec_distance "Groonga" --pca 2
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      9
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ]
+    ],
+    [
+      "groonga",
+      1.0,
+      0.198454961180687,
+      -0.223525851964951
+    ],
+    [
+      "rroonga",
+      0.12582902610302,
+      -0.18285807967186,
+      0.17709456384182
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165,
+      0.11761412024498,
+      0.189904630184174
+    ],
+    [
+      "mysql",
+      -0.0158039312809706,
+      -0.720396101474762,
+      0.313529253005981
+    ],
+    [
+      "postgresql",
+      -0.0281914249062538,
+      -0.239245057106018,
+      -0.52692723274231
+    ],
+    [
+      "library",
+      -0.0417644791305065,
+      -0.481823235750198,
+      -0.196554809808731
+    ],
+    [
+      "database",
+      -0.0530047751963139,
+      -0.0849298760294914,
+      -0.505870521068573
+    ],
+    [
+      "server",
+      -0.08939129114151,
+      -0.158556163311005,
+      0.0611308738589287
+    ],
+    [
+      "</s>",
+      -0.100139416754246,
+      -0.547784805297852,
+      -0.0478882193565369
+    ]
+  ]
+]

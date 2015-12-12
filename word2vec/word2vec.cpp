@@ -28,7 +28,12 @@
 #include <iostream>
 #include <string>
 
+#include "Eigen/Dense"
+#include "RedSVD/RedSVD-h"
+
 using namespace std;
+using namespace Eigen;
+using namespace RedSVD;
 
 #include <mecab.h>
 #include <re2/re2.h>
@@ -103,7 +108,7 @@ output_header(grn_ctx *ctx, int nhits)
   grn_ctx_output_cstr(ctx, "ShortText");
   grn_ctx_output_array_close(ctx);
   grn_ctx_output_array_open(ctx, "COLUMN", 2);
-  grn_ctx_output_cstr(ctx, "_score");
+  grn_ctx_output_cstr(ctx, "_value");
   grn_ctx_output_cstr(ctx, "Float");
   grn_ctx_output_array_close(ctx);
   grn_ctx_output_array_close(ctx);
@@ -692,6 +697,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   float *vec;
   char **bestw;
   float *bestd;
+  long long *besti;
   long long a, b;
   int input_n_words = 0;
   grn_obj *var;
@@ -720,6 +726,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   grn_obj *res = NULL;
   grn_pat_cursor *pc;
   int binary = 1;
+  int pca = 0;
+  int total_count = 0;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
   if (GRN_TEXT_LEN(var) == 0) {
@@ -803,6 +811,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "edit_distance", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     edit_distance = atoi(GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "pca", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    pca = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -922,7 +934,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         return NULL;
       }
     }
-  } else {
+  } else if (!pca) {
     res = grn_table_create(ctx, NULL, 0, NULL,
                            GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
                            grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), grn_ctx_at(ctx, GRN_DB_FLOAT));
@@ -961,9 +973,12 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     bestw[a] = (char *)GRN_PLUGIN_MALLOC(ctx, max_length_of_vocab_word * sizeof(char));
   }
   bestd = (float *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(float));
-  for (a = 0; a < N; a++) bestd[a] = -1;
-  for (a = 0; a < N; a++) bestw[a][0] = 0;
-
+  besti = (long long *)GRN_PLUGIN_MALLOC(ctx, N * sizeof(long long));
+  for (a = 0; a < N; a++) {
+    bestd[a] = -1;
+    besti[a] = 0;
+    bestw[a][0] = 0;
+  }
 
   if (is_sentence_vectors) {
     pc = grn_pat_cursor_open(ctx, vocab[model_idx], DOC_ID_PREFIX, DOC_ID_PREFIX_LEN, NULL, 0, 0, -1, GRN_CURSOR_PREFIX);
@@ -975,10 +990,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   if (pc) {
     long long word_idx;
     while ((word_idx = grn_pat_cursor_next(ctx, pc)) != GRN_ID_NIL) {
-      //convert grn_id to idx of array
+      /* convert grn_id to idx of array */
       word_idx--;
       a = 0;
-      //skip same word
+      /* skip same word */
       for (b = 0; b < input_n_words; b++) if (found_row_idx[b] == word_idx) a = 1;
       if (a == 1) continue;
 
@@ -1004,9 +1019,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           }
           for (long long d = N - 1; d > a; d--) {
             bestd[d] = bestd[d - 1];
+            besti[d] = besti[d - 1];
             strcpy(bestw[d], bestw[d - 1]);
           }
           bestd[a] = dist;
+          besti[a] = word_idx;
 
           if (output_filter != NULL || is_phrase) {
             string s = key_name;
@@ -1030,6 +1047,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
   for (a = 0; a < N; a++) {
     if (strlen(bestw[a]) > 0) {
+      total_count++;
       if (is_sentence_vectors && table_len) {
         char *doc_id_p;
         grn_id doc_id = 0;
@@ -1039,20 +1057,11 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         if (doc_id) {
           add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
         }
-      } else {
+      } else if (!pca) {
         add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
       }
     }
   }
-
-  for (a = 0; a < N; a++) {
-    GRN_PLUGIN_FREE(ctx, bestw[a]);
-    bestw[a] = NULL;
-  }
-  GRN_PLUGIN_FREE(ctx, bestw);
-  bestw = NULL;
-  GRN_PLUGIN_FREE(ctx, bestd);
-  bestd = NULL;
 
   if (expander_mode == GRN_EXPANDER_EXPANDED) {
     grn_obj buf;
@@ -1064,6 +1073,72 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     GRN_TEXT_PUTS(ctx, &buf, "))");
     grn_ctx_output_obj(ctx, &buf, NULL);
     grn_obj_unlink(ctx, &buf);
+  } else if (pca) {
+    /* Map to matrix of Eigen */
+    MatrixXf X(total_count + 1, dim_size[model_idx]);
+    for (b = 0; b < dim_size[model_idx]; b++) {
+      X(0, b) = M[model_idx][b + found_row_idx[0] * dim_size[model_idx]];
+    }
+    for (a = 0; a < N; a++) {
+      if (strlen(bestw[a]) > 0) {
+        for (b = 0; b < dim_size[model_idx]; b++) {
+          X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]];
+        }
+      }
+    }
+    /* PCA reduce dimension to pca */
+    RedPCA<MatrixXf> redpca(X, pca);
+    MatrixXf Y;
+    Y = redpca.scores();
+
+    /* output */
+    /* header */
+    grn_ctx_output_array_open(ctx, "RESULTSET", 2 + total_count + 1);
+    grn_ctx_output_array_open(ctx, "NHITS", 1);
+    grn_ctx_output_int32(ctx, total_count + 1);
+    grn_ctx_output_array_close(ctx);
+
+    /* columns */
+    grn_ctx_output_array_open(ctx, "COLUMNS", 2 + pca);
+    grn_ctx_output_array_open(ctx, "COLUMN", 2);
+    grn_ctx_output_cstr(ctx, "_key");
+    grn_ctx_output_cstr(ctx, "ShortText");
+    grn_ctx_output_array_close(ctx);
+    grn_ctx_output_array_open(ctx, "COLUMN", 2);
+    grn_ctx_output_cstr(ctx, "_value");
+    grn_ctx_output_cstr(ctx, "Float");
+    grn_ctx_output_array_close(ctx);
+    for (a = 0; a < pca; a++) {
+      grn_ctx_output_array_open(ctx, "COLUMN", 2);
+      grn_ctx_output_cstr(ctx, "_pca_value");
+      grn_ctx_output_cstr(ctx, "Float");
+      grn_ctx_output_array_close(ctx);
+    }
+    grn_ctx_output_array_close(ctx);
+
+    /* input term */
+    grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
+    grn_ctx_output_cstr(ctx, input_term[0]);
+    grn_ctx_output_float(ctx, 1);
+    for (b = 0; b < pca; b++) {
+      grn_ctx_output_float(ctx, Y(0,b));
+    }
+    grn_ctx_output_array_close(ctx);
+
+    /* neighbor terms */
+    for (a = 0; a < N; a++) {
+      if (strlen(bestw[a]) > 0) {
+        grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
+        grn_ctx_output_cstr(ctx, bestw[a]);
+        grn_ctx_output_float(ctx, bestd[a]);
+        for (b = 0; b < pca; b++) {
+          grn_ctx_output_float(ctx, Y(a+1,b));
+        }
+        grn_ctx_output_array_close(ctx);
+      }
+    }
+    grn_ctx_output_array_close(ctx);
+
   } else {
     if (is_sentence_vectors && table_len) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
@@ -1074,6 +1149,17 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       output(ctx, res, offset, limit, "_key,_value", strlen("_key,_value"), "-_value", strlen("-_value"));
     }
   }
+
+  for (a = 0; a < N; a++) {
+    GRN_PLUGIN_FREE(ctx, bestw[a]);
+    bestw[a] = NULL;
+  }
+  GRN_PLUGIN_FREE(ctx, bestw);
+  bestw = NULL;
+  GRN_PLUGIN_FREE(ctx, bestd);
+  bestd = NULL;
+  GRN_PLUGIN_FREE(ctx, besti);
+  besti = NULL;
 
   GRN_PLUGIN_FREE(ctx, vec);
   vec = NULL;
@@ -1702,7 +1788,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[19];
+  grn_expr_var vars[20];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "binary", -1);
@@ -1724,11 +1810,12 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[12], "expander_mode", -1);
   grn_plugin_expr_var_init(ctx, &vars[13], "is_phrase", -1);
   grn_plugin_expr_var_init(ctx, &vars[14], "edit_distance", -1);
-  grn_plugin_expr_var_init(ctx, &vars[15], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 19, vars);
+  grn_plugin_expr_var_init(ctx, &vars[15], "pca", -1);
+  grn_plugin_expr_var_init(ctx, &vars[16], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 20, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

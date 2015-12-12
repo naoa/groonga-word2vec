@@ -37,7 +37,7 @@ word2vec_distance "+ Groonga Rroonga"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -115,7 +115,7 @@ word2vec_distance "Groonga +Rroonga"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -142,7 +142,7 @@ word2vec_distance "Groonga+ Rroonga"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -169,7 +169,7 @@ word2vec_distance "Groonga Rroonga+"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
@@ -196,7 +196,7 @@ word2vec_distance "Groonga Rroonga +"
         "ShortText"
       ],
       [
-        "_score",
+        "_value",
         "Float"
       ]
     ],
