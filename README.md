@@ -68,7 +68,7 @@ OSが実行可能なパスにword2vecコマンドが必要です。デフォル�
 | hs    | 階層的Softmax(高速化手法,ランダム要素有) | 1 |
 | negative    | ネガティブサンプリングの単語数(高速化手法,ランダム要素有) | 0 |
 | iter    | 学習回数 | 5 |
-| min_count    | 単語の最低出現数 | 5 |
+| min_count    | 単語の最低出現数  sentence_vectorsの場合は自動的に1になる | 5 |
 | classes    | K-meansクラスタリングする場合は1以上の分類したい数 | 0 |
 | sentence_vectors   | sentence vectorを含める場合は1  doc_id:_id(Groongaのtableの_id)の形式で文書ベクトルを追加  (それ以外の単語ベクトルもある) | 0 |
 

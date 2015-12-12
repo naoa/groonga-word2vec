@@ -1604,11 +1604,6 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
     GRN_TEXT_PUTS(ctx, &cmd, " -iter ");
     GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
   }
-  var = grn_plugin_proc_get_var(ctx, user_data, "min_count", -1);
-  if (GRN_TEXT_LEN(var) != 0) {
-    GRN_TEXT_PUTS(ctx, &cmd, " -min-count ");
-    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
-  }
   var = grn_plugin_proc_get_var(ctx, user_data, "classes", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     GRN_TEXT_PUTS(ctx, &cmd, " -classes ");
@@ -1618,6 +1613,13 @@ command_word2vec_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj 
   if (GRN_TEXT_LEN(var) != 0) {
     GRN_TEXT_PUTS(ctx, &cmd, " -sentence-vectors ");
     GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+    GRN_TEXT_PUTS(ctx, &cmd, " -min-count 1");
+  } else {
+    var = grn_plugin_proc_get_var(ctx, user_data, "min_count", -1);
+    if (GRN_TEXT_LEN(var) != 0) {
+      GRN_TEXT_PUTS(ctx, &cmd, " -min-count ");
+      GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+    }
   }
 
   {
