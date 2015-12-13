@@ -996,6 +996,8 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   if (pc) {
     long long word_idx;
     while ((word_idx = grn_pat_cursor_next(ctx, pc)) != GRN_ID_NIL) {
+      char key_name[GRN_TABLE_MAX_KEY_SIZE];
+      int key_len;
       /* convert grn_id to idx of array */
       word_idx--;
       a = 0;
@@ -1003,26 +1005,31 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       for (b = 0; b < input_n_words; b++) if (found_row_idx[b] == word_idx) a = 1;
       if (a == 1) continue;
 
+      /* get word */
+      key_len = grn_pat_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
+      key_name[key_len] = '\0';
+
+      /* filter by regexp */
+      if (stop_filter != NULL) {
+        string s = key_name;
+        string t = stop_filter;
+        if ( RE2::FullMatch(s, t) ) {
+          continue;
+        }
+      }
+
+      /* calc distance */
       dist = 0;
       for (a = 0; a < dim_size[model_idx]; a++) dist += vec[a] * M[model_idx][a + word_idx * dim_size[model_idx]];
 
-      //Insertion sort to bestw[N]
+      /* skip if distance is under threshold */
+      if (threshold > 0 && dist < threshold) {
+        continue;
+      }
+
+      /* Insertion sort to bestw[N] */
       for (a = 0; a < N; a++) {
         if (dist > bestd[a]) {
-          char key_name[GRN_TABLE_MAX_KEY_SIZE];
-          int key_len;
-          key_len = grn_pat_get_key(ctx, vocab[model_idx], word_idx + 1, key_name, GRN_TABLE_MAX_KEY_SIZE);
-          key_name[key_len] = '\0';
-          if (threshold > 0 && dist < threshold) {
-            break;
-          }
-          if (stop_filter != NULL) {
-            string s = key_name;
-            string t = stop_filter;
-            if ( RE2::FullMatch(s, t) ) {
-              break;
-            }
-          }
           for (long long d = N - 1; d > a; d--) {
             bestd[d] = bestd[d - 1];
             besti[d] = besti[d - 1];
@@ -1030,20 +1037,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
           }
           bestd[a] = dist;
           besti[a] = word_idx;
-
-          if (output_filter != NULL || is_phrase) {
-            string s = key_name;
-            if (is_phrase) {
-              re2::RE2::GlobalReplace(&s, "_", " ");
-            }
-            if (output_filter != NULL) {
-              re2::RE2::GlobalReplace(&s, output_filter, "");
-            }
-            strcpy(bestw[a], s.c_str());
-          } else {
-            strcpy(bestw[a], key_name);
-          }
-
+          strcpy(bestw[a], key_name);
           break;
         }
       }
@@ -1053,6 +1047,17 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
   for (a = 0; a < N; a++) {
     if (strlen(bestw[a]) > 0) {
+      if (output_filter != NULL || is_phrase) {
+        string s = bestw[a];
+        if (is_phrase) {
+          re2::RE2::GlobalReplace(&s, "_", " ");
+        }
+        if (output_filter != NULL) {
+          re2::RE2::GlobalReplace(&s, output_filter, "");
+        }
+        strcpy(bestw[a], s.c_str());
+      }
+
       total_count++;
       if (is_sentence_vectors && table_len) {
         char *doc_id_p;
