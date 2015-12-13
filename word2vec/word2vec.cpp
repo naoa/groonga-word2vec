@@ -1102,7 +1102,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       if ((keys = grn_table_sort_key_from_str(ctx, "-_value", strlen("-_value"), res, &nkeys))) {
         grn_table_sort(ctx, res, 0, -1, sorted, keys, nkeys);
         grn_table_sort_key_close(ctx, keys, nkeys);
-        grn_p(ctx, sorted);
         if (cur = grn_table_cursor_open(ctx, sorted, NULL, 0, NULL, 0, 0, N,
                                         GRN_CURSOR_BY_ID)) {
           grn_obj buf;
@@ -1230,16 +1229,23 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_array_close(ctx);
 
     /* neighbor terms */
-    /* should support offset limit */
-    for (a = 0; a < N; a++) {
-      if (strlen(bestw[a]) > 0) {
-        grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
-        grn_ctx_output_cstr(ctx, bestw[a]);
-        grn_ctx_output_float(ctx, bestd[a]);
-        for (b = 0; b < pca; b++) {
-          grn_ctx_output_float(ctx, Y(a+1,b));
+    {
+      unsigned int max;
+      if (offset + limit > N) {
+        max = N;
+      } else {
+        max = offset + limit;
+      }
+      for (a = offset; a < max; a++) {
+        if (strlen(bestw[a]) > 0) {
+          grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
+          grn_ctx_output_cstr(ctx, bestw[a]);
+          grn_ctx_output_float(ctx, bestd[a]);
+          for (b = 0; b < pca; b++) {
+            grn_ctx_output_float(ctx, Y(a+1,b));
+          }
+          grn_ctx_output_array_close(ctx);
         }
-        grn_ctx_output_array_close(ctx);
       }
     }
     grn_ctx_output_array_close(ctx);

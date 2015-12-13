@@ -1,0 +1,71 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1 --negative 0 --cbow 0 --hs 0 --binary 1
+[[0,0.0,0.0],true]
+word2vec_distance "Groonga" --pca 2 --offset 1 --limit 2
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      9
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ]
+    ],
+    [
+      "groonga",
+      1.0,
+      0.0166809968650341,
+      0.60534143447876
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165,
+      0.496645659208298,
+      0.374389380216599
+    ],
+    [
+      "mysql",
+      -0.0158039312809706,
+      0.43944776058197,
+      -0.189872652292252
+    ]
+  ]
+]
