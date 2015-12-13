@@ -29,11 +29,12 @@
 #include <string>
 
 #include "Eigen/Dense"
-#include "RedSVD/RedSVD-h"
+
+#define print(var)  \
+  std::cout<<#var"= "<<std::endl<<(var)<<std::endl
 
 using namespace std;
 using namespace Eigen;
-using namespace RedSVD;
 
 #include <mecab.h>
 #include <re2/re2.h>
@@ -1082,14 +1083,15 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < N; a++) {
       if (strlen(bestw[a]) > 0) {
         for (b = 0; b < dim_size[model_idx]; b++) {
-          X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]];
+          X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]]; 
         }
       }
     }
     /* PCA reduce dimension to pca */
-    RedPCA<MatrixXf> redpca(X, pca);
-    MatrixXf Y;
-    Y = redpca.scores();
+    MatrixXf centered = X.rowwise() - X.colwise().mean();
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(centered, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    MatrixXf proj = svd.matrixU() * svd.singularValues().asDiagonal();
+    MatrixXf Y = proj.leftCols(pca);
 
     /* output */
     /* header */
@@ -1122,6 +1124,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_float(ctx, 1);
     for (b = 0; b < pca; b++) {
       grn_ctx_output_float(ctx, Y(0,b));
+      Y(0, b) = 0;
     }
     grn_ctx_output_array_close(ctx);
 
@@ -1138,7 +1141,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       }
     }
     grn_ctx_output_array_close(ctx);
-
   } else {
     if (is_sentence_vectors && table_len) {
       output(ctx, res, offset, limit, column_names, column_names_len, sortby, sortby_len);
