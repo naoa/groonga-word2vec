@@ -316,16 +316,4 @@ The original word2vec code is Apache License 2.0. See COPYING-Apache-License-2.0
 
 https://code.google.com/p/word2vec/
 
-RedSVD is provided by followings. See vendor/redsvd-h/LICENSE
-
-A header-only version of RedSVD
-
-Copyright (c) 2014 Nicolas Tessore
-
-based on RedSVD
-
-Copyright (c) 2010 Daisuke Okanohara
-
-All rights reserved.
-
 Eigen is primarily MPL2 licensed. See vendor/eigen-eigen-b30b87236a1b/COPYING.MPL2 and these links:
