@@ -1120,6 +1120,17 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
 
     /* input term */
     grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
+    if (output_filter != NULL || is_phrase) {
+      string s = input_term[0];
+      if (is_phrase) {
+        re2::RE2::GlobalReplace(&s, "_", " ");
+      }
+      if (output_filter != NULL) {
+        re2::RE2::GlobalReplace(&s, output_filter, "");
+      }
+      strcpy(input_term[0], s.c_str());
+    }
+
     grn_ctx_output_cstr(ctx, input_term[0]);
     grn_ctx_output_float(ctx, 1);
     for (b = 0; b < pca; b++) {
