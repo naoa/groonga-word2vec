@@ -1083,7 +1083,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (a = 0; a < N; a++) {
       if (strlen(bestw[a]) > 0) {
         for (b = 0; b < dim_size[model_idx]; b++) {
-          X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]]; 
+          X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]];
         }
       }
     }
@@ -1124,7 +1124,6 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_float(ctx, 1);
     for (b = 0; b < pca; b++) {
       grn_ctx_output_float(ctx, Y(0,b));
-      Y(0, b) = 0;
     }
     grn_ctx_output_array_close(ctx);
 
