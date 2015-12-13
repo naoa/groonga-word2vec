@@ -97,7 +97,7 @@ JSON
 | term      | 入力単語 or 単語式 (e.g. 単語A + 単語B - 単語C) | NULL |
 | offset      | 結果出力のオフセット | 0 | 
 | limit     | 結果出力の上限件数 n_sort以上の数は出力されない | 10 |
-| n_sort     | 挿入ソートのバッファサイズ 増やせば増やすほど遅くなる | 40 |
+| n_sort     | ソートのバッファサイズ 200までは挿入ソートのため増やせば増やすほど遅くなる  200以降はそこまでは変わらない | 40 |
 | threshold     | コサイン距離(_value)の閾値、1以下の小数を指定 | -1 |
 | normalizer      | Groongaのノーマライザ― | NormalizerAuto |
 | prefix_filter   | 出力をさせる単語に前方一致する文字列  高速な絞込が可能 | NULL |

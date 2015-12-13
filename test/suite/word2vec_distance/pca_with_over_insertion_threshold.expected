@@ -1,0 +1,107 @@
+plugin_register word2vec/word2vec
+[[0,0.0,0.0],true]
+table_create Tags TABLE_PAT_KEY ShortText
+[[0,0.0,0.0],true]
+table_create Entries TABLE_NO_KEY
+[[0,0.0,0.0],true]
+column_create Entries title COLUMN_SCALAR ShortText
+[[0,0.0,0.0],true]
+column_create Entries tag COLUMN_SCALAR Tags
+[[0,0.0,0.0],true]
+column_create Entries tags COLUMN_VECTOR Tags
+[[0,0.0,0.0],true]
+load --table Entries
+[
+{"title": "FulltextSearch", "tag": "Library", "tags": ["Groonga", "Rroonga"]},
+{"title": "Database", "tag": "Server", "tags": ["MySQL", "PostgreSQL"]}
+]
+[[0,0.0,0.0],2]
+dump_to_train_file Entries title,tag,tags
+[[0,0.0,0.0],true]
+word2vec_train --min_count 1 --negative 0 --cbow 0 --hs 0 --binary 1
+[[0,0.0,0.0],true]
+word2vec_distance "Groonga" --pca 2 --n_sort 201
+[
+  [
+    0,
+    0.0,
+    0.0
+  ],
+  [
+    [
+      9
+    ],
+    [
+      [
+        "_key",
+        "ShortText"
+      ],
+      [
+        "_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ],
+      [
+        "_pca_value",
+        "Float"
+      ]
+    ],
+    [
+      "groonga",
+      1.0,
+      -0.835255205631256,
+      0.00141285907011479
+    ],
+    [
+      "rroonga",
+      0.12582902610302,
+      -0.835255324840546,
+      0.00141285115387291
+    ],
+    [
+      "fulltextsearch",
+      0.0368562042713165,
+      0.0755222588777542,
+      0.462057650089264
+    ],
+    [
+      "mysql",
+      -0.0158039312809706,
+      0.351250529289246,
+      -0.369923174381256
+    ],
+    [
+      "postgresql",
+      -0.0281914249062538,
+      0.276991873979568,
+      0.437813550233841
+    ],
+    [
+      "library",
+      -0.0417644791305065,
+      0.308353841304779,
+      0.595291137695312
+    ],
+    [
+      "database",
+      -0.0530047751963139,
+      -0.0748876482248306,
+      -0.387136071920395
+    ],
+    [
+      "server",
+      -0.08939129114151,
+      0.28420427441597,
+      -0.584155142307281
+    ],
+    [
+      "</s>",
+      -0.100139416754246,
+      0.449076235294342,
+      -0.15677310526371
+    ]
+  ]
+]

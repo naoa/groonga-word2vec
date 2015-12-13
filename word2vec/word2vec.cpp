@@ -58,6 +58,7 @@ static grn_encoding sole_mecab_encoding = GRN_ENC_NONE;
 #define DEFAULT_OUTPUT_COLUMNS  "_id,_score"
 
 #define DEFAULT_N_SORT 40
+#define INSERTION_SORT_THRESHOLD 200
 
 #define DOC_ID_PREFIX "doc_id:"
 #define DOC_ID_PREFIX_LEN 7
@@ -940,7 +941,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
         return NULL;
       }
     }
-  } else if (!pca) {
+  } else if (!pca || pca && N >= INSERTION_SORT_THRESHOLD) {
     res = grn_table_create(ctx, NULL, 0, NULL,
                            GRN_TABLE_HASH_KEY|GRN_OBJ_WITH_SUBREC,
                            grn_ctx_at(ctx, GRN_DB_SHORT_TEXT), grn_ctx_at(ctx, GRN_DB_FLOAT));
@@ -1028,49 +1029,127 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       }
 
       /* Insertion sort to bestw[N] */
-      for (a = 0; a < N; a++) {
-        if (dist > bestd[a]) {
-          for (long long d = N - 1; d > a; d--) {
-            bestd[d] = bestd[d - 1];
-            besti[d] = besti[d - 1];
-            strcpy(bestw[d], bestw[d - 1]);
+      if (N < INSERTION_SORT_THRESHOLD) {
+        for (a = 0; a < N; a++) {
+          if (dist > bestd[a]) {
+            for (long long d = N - 1; d > a; d--) {
+              bestd[d] = bestd[d - 1];
+              besti[d] = besti[d - 1];
+              strcpy(bestw[d], bestw[d - 1]);
+            }
+            bestd[a] = dist;
+            besti[a] = word_idx;
+            strcpy(bestw[a], key_name);
+            break;
           }
-          bestd[a] = dist;
-          besti[a] = word_idx;
-          strcpy(bestw[a], key_name);
-          break;
+        }
+      } else {
+        if (key_len > 0) {
+          if (is_sentence_vectors && table_len) {
+            char *doc_id_p;
+            grn_id doc_id = 0;
+            doc_id_p = key_name;
+            doc_id_p += DOC_ID_PREFIX_LEN;
+            doc_id = atoi(doc_id_p);
+            if (doc_id) {
+              add_record_value(ctx, res, &doc_id, sizeof(grn_id), dist);
+            }
+          } else {
+            add_record_value(ctx, res, key_name, strlen(key_name), dist);
+          }
         }
       }
     }
     grn_pat_cursor_close(ctx, pc);
   }
 
-  for (a = 0; a < N; a++) {
-    if (strlen(bestw[a]) > 0) {
-      if (output_filter != NULL || is_phrase) {
-        string s = bestw[a];
-        if (is_phrase) {
-          re2::RE2::GlobalReplace(&s, "_", " ");
+  if (N < INSERTION_SORT_THRESHOLD) {
+    for (a = 0; a < N; a++) {
+      if (strlen(bestw[a]) > 0) {
+        if (output_filter != NULL || is_phrase) {
+          string s = bestw[a];
+          if (is_phrase) {
+            re2::RE2::GlobalReplace(&s, "_", " ");
+          }
+          if (output_filter != NULL) {
+            re2::RE2::GlobalReplace(&s, output_filter, "");
+          }
+          strcpy(bestw[a], s.c_str());
         }
-        if (output_filter != NULL) {
-          re2::RE2::GlobalReplace(&s, output_filter, "");
-        }
-        strcpy(bestw[a], s.c_str());
-      }
 
-      total_count++;
-      if (is_sentence_vectors && table_len) {
-        char *doc_id_p;
-        grn_id doc_id = 0;
-        doc_id_p = bestw[a];
-        doc_id_p += DOC_ID_PREFIX_LEN;
-        doc_id = atoi(doc_id_p);
-        if (doc_id) {
-          add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
+        total_count++;
+        if (is_sentence_vectors && table_len) {
+          char *doc_id_p;
+          grn_id doc_id = 0;
+          doc_id_p = bestw[a];
+          doc_id_p += DOC_ID_PREFIX_LEN;
+          doc_id = atoi(doc_id_p);
+          if (doc_id) {
+            add_record_value(ctx, res, &doc_id, sizeof(grn_id), bestd[a]);
+          }
+        } else if (!pca) {
+          add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
         }
-      } else if (!pca) {
-        add_record_value(ctx, res, bestw[a], strlen(bestw[a]), bestd[a]);
       }
+    }
+  } else {
+    grn_obj *sorted;
+    if ((sorted = grn_table_create(ctx, NULL, 0, NULL, GRN_OBJ_TABLE_NO_KEY, NULL, res))) {
+      uint32_t nkeys;
+      grn_table_sort_key *keys;
+      grn_table_cursor *cur;
+      grn_id id;
+      if ((keys = grn_table_sort_key_from_str(ctx, "-_value", strlen("-_value"), res, &nkeys))) {
+        grn_table_sort(ctx, res, 0, -1, sorted, keys, nkeys);
+        grn_table_sort_key_close(ctx, keys, nkeys);
+        grn_p(ctx, sorted);
+        if (cur = grn_table_cursor_open(ctx, sorted, NULL, 0, NULL, 0, 0, N,
+                                        GRN_CURSOR_BY_ID)) {
+          grn_obj buf;
+          grn_obj value_buf;
+          GRN_TEXT_INIT(&buf, 0);
+          GRN_FLOAT_INIT(&value_buf, 0);
+          grn_obj *key = grn_obj_column(ctx, sorted,
+                                           GRN_COLUMN_NAME_KEY,
+                                           GRN_COLUMN_NAME_KEY_LEN);
+          grn_obj *value = grn_obj_column(ctx, sorted,
+                                           GRN_COLUMN_NAME_VALUE,
+                                           GRN_COLUMN_NAME_VALUE_LEN);
+
+          total_count = 0;
+          while ((id = grn_table_cursor_next(ctx, cur)) != GRN_ID_NIL) {
+            GRN_BULK_REWIND(&buf);
+            GRN_BULK_REWIND(&value_buf);
+            grn_obj_get_value(ctx, key, id, &buf);
+
+            memcpy(bestw[total_count], GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf));
+            bestw[total_count][GRN_TEXT_LEN(&buf)] = '\0';
+            if (output_filter != NULL || is_phrase) {
+              string s = bestw[total_count];
+              if (is_phrase) {
+                re2::RE2::GlobalReplace(&s, "_", " ");
+              }
+              if (output_filter != NULL) {
+                re2::RE2::GlobalReplace(&s, output_filter, "");
+              }
+              strcpy(bestw[total_count], s.c_str());
+            }
+            grn_obj_get_value(ctx, value, id, &value_buf);
+            bestd[total_count] = GRN_FLOAT_VALUE(&value_buf);
+            id = grn_table_get(ctx, res, GRN_TEXT_VALUE(&buf), GRN_TEXT_LEN(&buf));
+            besti[total_count] = id - 1;
+            total_count++;
+          }
+          grn_obj_unlink(ctx, key);
+          grn_obj_unlink(ctx, value);
+          grn_obj_unlink(ctx, &value_buf);
+          grn_obj_unlink(ctx, &buf);
+          grn_table_cursor_close(ctx, cur);
+        }
+      }
+      grn_obj_unlink(ctx, sorted);
+    } else {
+      GRN_PLUGIN_LOG(ctx, GRN_LOG_ERROR, "[word2vec] cannot create temporary sort table.");
     }
   }
 
@@ -1090,7 +1169,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     for (b = 0; b < dim_size[model_idx]; b++) {
       X(0, b) = M[model_idx][b + found_row_idx[0] * dim_size[model_idx]];
     }
-    for (a = 0; a < N; a++) {
+    for (a = 0; a < total_count; a++) {
       if (strlen(bestw[a]) > 0) {
         for (b = 0; b < dim_size[model_idx]; b++) {
           X(a+1, b) = M[model_idx][b + besti[a] * dim_size[model_idx]];
@@ -1151,6 +1230,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
     grn_ctx_output_array_close(ctx);
 
     /* neighbor terms */
+    /* should support offset limit */
     for (a = 0; a < N; a++) {
       if (strlen(bestw[a]) > 0) {
         grn_ctx_output_array_open(ctx, "HIT", 2 + pca);
