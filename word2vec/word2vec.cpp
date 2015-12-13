@@ -728,6 +728,7 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   grn_pat_cursor *pc;
   int binary = 1;
   int pca = 0;
+  int pca_centered = 1;
   int total_count = 0;
 
   var = grn_plugin_proc_get_var(ctx, user_data, "file_path", -1);
@@ -816,6 +817,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
   var = grn_plugin_proc_get_var(ctx, user_data, "pca", -1);
   if (GRN_TEXT_LEN(var) != 0) {
     pca = atoi(GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "pca_centered", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    pca_centered = atoi(GRN_TEXT_VALUE(var));
   }
   var = grn_plugin_proc_get_var(ctx, user_data, "sentence_vectors", -1);
   if (GRN_TEXT_LEN(var) != 0) {
@@ -1088,8 +1093,10 @@ command_word2vec_distance(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_o
       }
     }
     /* PCA reduce dimension to pca */
-    MatrixXf centered = X.rowwise() - X.colwise().mean();
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd(centered, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    if (pca_centered == 1) {
+      X = X.rowwise() - X.colwise().mean();
+    }
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(X, Eigen::ComputeThinU | Eigen::ComputeThinV);
     MatrixXf proj = svd.matrixU() * svd.singularValues().asDiagonal();
     MatrixXf Y = proj.leftCols(pca);
 
@@ -1800,7 +1807,7 @@ GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 grn_rc
 GRN_PLUGIN_REGISTER(grn_ctx *ctx)
 {
-  grn_expr_var vars[20];
+  grn_expr_var vars[21];
 
   grn_plugin_expr_var_init(ctx, &vars[0], "file_path", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "binary", -1);
@@ -1823,11 +1830,12 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[13], "is_phrase", -1);
   grn_plugin_expr_var_init(ctx, &vars[14], "edit_distance", -1);
   grn_plugin_expr_var_init(ctx, &vars[15], "pca", -1);
-  grn_plugin_expr_var_init(ctx, &vars[16], "sentence_vectors", -1);
-  grn_plugin_expr_var_init(ctx, &vars[17], "table", -1);
-  grn_plugin_expr_var_init(ctx, &vars[18], "column", -1);
-  grn_plugin_expr_var_init(ctx, &vars[19], "sortby", -1);
-  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 20, vars);
+  grn_plugin_expr_var_init(ctx, &vars[16], "pca_centered", -1);
+  grn_plugin_expr_var_init(ctx, &vars[17], "sentence_vectors", -1);
+  grn_plugin_expr_var_init(ctx, &vars[18], "table", -1);
+  grn_plugin_expr_var_init(ctx, &vars[19], "column", -1);
+  grn_plugin_expr_var_init(ctx, &vars[20], "sortby", -1);
+  grn_plugin_command_create(ctx, "word2vec_distance", -1, command_word2vec_distance, 21, vars);
 
   grn_plugin_expr_var_init(ctx, &vars[0], "table", -1);
   grn_plugin_expr_var_init(ctx, &vars[1], "column", -1);

@@ -109,6 +109,7 @@ JSON
 | is_phrase   | スペースを``_``に置換してフレーズ化する場合1 | 0 |
 | edit_distance   | 出力結果を編集距離の近い順にする場合1  編集距離は_scoreにセットされる | 0 |
 | pca   | PCA(主成分分析)をして削減する次元数   可視化などの利用を想定  1以上の場合コサイン距離と次元圧縮したベクトルが出力される  入力値のベクトルも出力される | 0 |
+| pca_centered   | PCA(主成分分析)をするときにセンタリングさせる | 1 |
 | expander_mode   | 出力形式をクエリ展開用にするかどうかのフラグ  1:クエリ展開 ((query1) OR (query2)) | 0 |
 | sentence_vectors   | doc_id:から始まるsentence_vectorのみを出力する場合1  これを使う場合prefix_filterは無視される | 0 |
 | table   | sentence_vectorのdoc_idに対応させるテーブル名 | NULL |
