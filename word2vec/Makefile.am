@@ -1,6 +1,9 @@
 AM_CFLAGS =					\
 	$(GROONGA_CFLAGS)
 
+AM_CPPFLAGS =					\
+	-std=c++11
+
 AM_LDFLAGS =					\
 	-avoid-version				\
 	-module					\
@@ -17,4 +20,4 @@ word2vec.cpp
 
 word2vec_la_CPPFLAGS = $(AM_CFLAGS) $(AM_CPPFLAGS) $(MECAB_CPPFLAGS)
 word2vec_la_LIBADD = $(LIBS) $(MECAB_LIBS) $(RE2_LIBS)
-word2vec_la_LDFLAGS = $(AM_LDFLAGS) $(MECAB_LDFLAGS) -lm
+word2vec_la_LDFLAGS = $(AM_LDFLAGS) $(MECAB_LDFLAGS)

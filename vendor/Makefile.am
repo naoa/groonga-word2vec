@@ -4,7 +4,8 @@ AM_CFLAGS =					\
 AM_LDFLAGS =					\
 	-avoid-version				\
 	-module					\
-	-no-undefined
+	-no-undefined				\
+        -lm
 
 LIBS =						\
 	$(GROONGA_LIBS)
