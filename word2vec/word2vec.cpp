@@ -1888,6 +1888,438 @@ func_query_expander_word2vec(grn_ctx *ctx, int nargs, grn_obj **args,
   return rc_object;
 }
 
+
+static void
+get_glove_train_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_w2v.txt");
+}
+
+static void
+get_glove_vocab_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.vocab");
+}
+
+
+static grn_obj *
+command_glove_vocab_count(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                          grn_user_data *user_data)
+{
+  grn_obj *var;
+
+  char train_file[MAX_STRING], vocab_file[MAX_STRING];
+  grn_obj cmd;
+  GRN_TEXT_INIT(&cmd, 0);
+  GRN_BULK_REWIND(&cmd);
+  GRN_TEXT_PUTS(ctx, &cmd, "vocab_count");
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "train_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_train_file_path(ctx, train_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, train_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_vocab_file_path(ctx, vocab_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, vocab_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -verbose ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "max_vocab", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -max-vocab ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "min_count", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -min-count ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+
+  {
+    char buff[1024];
+    GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_vocab_count] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
+    FILE *fp = popen(GRN_TEXT_VALUE(&cmd), "r");
+    while (fgets(buff, sizeof(buff), fp)) {
+      GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_vocab_count] %s", right_trim(buff, '\n'));
+    }
+    pclose(fp);
+  }
+  grn_obj_unlink(ctx, &cmd);
+  grn_ctx_output_bool(ctx, GRN_TRUE);
+
+  return NULL;
+}
+
+
+static void
+get_glove_cooccur_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.cooccur");
+}
+
+static void
+get_glove_overflow_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.oveflow");
+}
+
+static grn_obj *
+command_glove_cooccur(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                       grn_user_data *user_data)
+{
+  grn_obj *var;
+
+  char train_file[MAX_STRING], cooccur_file[MAX_STRING], vocab_file[MAX_STRING], overflow_file[MAX_STRING];
+  grn_obj cmd;
+  GRN_TEXT_INIT(&cmd, 0);
+  GRN_BULK_REWIND(&cmd);
+  GRN_TEXT_PUTS(ctx, &cmd, "cooccur");
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "train_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_train_file_path(ctx, train_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, train_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "cooccur_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_cooccur_file_path(ctx, cooccur_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, cooccur_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -vocab-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_vocab_file_path(ctx, vocab_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -vocab-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, vocab_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -verbose ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "symmetric", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -symmetric ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "window_size", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -window-size ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "overflow_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -overflow-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_overflow_file_path(ctx, overflow_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -overflow-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, overflow_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "memory", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -memory ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "max_product", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -max-product ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "overflow_length", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -overflow-length ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+
+  {
+    char buff[1024];
+    GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_cooccur] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
+    FILE *fp = popen(GRN_TEXT_VALUE(&cmd), "r");
+    while (fgets(buff, sizeof(buff), fp)) {
+      GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_cooccur] %s", right_trim(buff, '\n'));
+    }
+    pclose(fp);
+  }
+  grn_obj_unlink(ctx, &cmd);
+  grn_ctx_output_bool(ctx, GRN_TRUE);
+
+  return NULL;
+}
+
+static void
+get_glove_shuffle_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.shuffle");
+}
+
+static void
+get_glove_shuffle_temp_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.shuffle_temp");
+}
+
+static grn_obj *
+command_glove_shuffle(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                      grn_user_data *user_data)
+{
+  grn_obj *var;
+
+  char cooccur_file[MAX_STRING], shuffle_file[MAX_STRING], temp_file[MAX_STRING];
+  grn_obj cmd;
+  GRN_TEXT_INIT(&cmd, 0);
+  GRN_BULK_REWIND(&cmd);
+  GRN_TEXT_PUTS(ctx, &cmd, "shuffle");
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "cooccur_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_cooccur_file_path(ctx, cooccur_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, cooccur_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "shuffle_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_shuffle_file_path(ctx, shuffle_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -output-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, shuffle_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "temp_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -temp-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_shuffle_temp_file_path(ctx, temp_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -temp-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, temp_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -verbose ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "memory", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -memory ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "array_size", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -array-size ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+
+  {
+    char buff[1024];
+    GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_shuffle] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
+    FILE *fp = popen(GRN_TEXT_VALUE(&cmd), "r");
+    while (fgets(buff, sizeof(buff), fp)) {
+      GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_shuffle] %s", right_trim(buff, '\n'));
+    }
+    pclose(fp);
+  }
+  grn_obj_unlink(ctx, &cmd);
+  grn_ctx_output_bool(ctx, GRN_TRUE);
+
+  return NULL;
+}
+
+
+static void
+get_glove_save_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv");
+}
+
+
+static void
+get_glove_gradsq_file_path(grn_ctx *ctx, char *file_name)
+{
+   grn_obj *db;
+   db = grn_ctx_db(ctx);
+   const char *path;
+   path = grn_obj_path(ctx, db);
+   strcpy(file_name, path);
+   strcat(file_name, "_glv.gradsq");
+}
+
+static grn_obj *
+command_glove_train(grn_ctx *ctx, GNUC_UNUSED int nargs, GNUC_UNUSED grn_obj **args,
+                    grn_user_data *user_data)
+{
+  grn_obj *var;
+
+  char shuffle_file[MAX_STRING], save_file[MAX_STRING], vocab_file[MAX_STRING], gradsq_file[MAX_STRING];
+  grn_obj cmd;
+  GRN_TEXT_INIT(&cmd, 0);
+  GRN_BULK_REWIND(&cmd);
+  GRN_TEXT_PUTS(ctx, &cmd, "glove");
+
+  var = grn_plugin_proc_get_var(ctx, user_data, "shuffle_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_shuffle_file_path(ctx, shuffle_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -input-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, shuffle_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "save_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -save-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_save_file_path(ctx, save_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -save-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, save_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "vocab_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -vocab-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_vocab_file_path(ctx, vocab_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -vocab-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, vocab_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "save_gradsq", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -save-gradsq ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "gradsq_file", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -gradsq-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  } else {
+    get_glove_gradsq_file_path(ctx, gradsq_file);
+    GRN_TEXT_PUTS(ctx, &cmd, " -gradsq-file ");
+    GRN_TEXT_PUTS(ctx, &cmd, gradsq_file);
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "verbose", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -verbose ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "vector_size", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -vector-size ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "iter", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -iter ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "threads", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -threads ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "alpha", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -alpha ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "x_max", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -x-max ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "eta", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -eta ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "binary", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -binary ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+  var = grn_plugin_proc_get_var(ctx, user_data, "model", -1);
+  if (GRN_TEXT_LEN(var) != 0) {
+    GRN_TEXT_PUTS(ctx, &cmd, " -model ");
+    GRN_TEXT_PUTS(ctx, &cmd, GRN_TEXT_VALUE(var));
+  }
+
+  {
+    char buff[1024];
+    GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_train] %.*s", GRN_TEXT_LEN(&cmd), GRN_TEXT_VALUE(&cmd));
+    FILE *fp = popen(GRN_TEXT_VALUE(&cmd), "r");
+    while (fgets(buff, sizeof(buff), fp)) {
+      GRN_LOG(ctx, GRN_LOG_WARNING, "[glove_train] %s", right_trim(buff, '\n'));
+    }
+    pclose(fp);
+  }
+  grn_obj_unlink(ctx, &cmd);
+  grn_ctx_output_bool(ctx, GRN_TRUE);
+
+  return NULL;
+}
+
 grn_rc
 GRN_PLUGIN_INIT(GNUC_UNUSED grn_ctx *ctx)
 {
@@ -1958,6 +2390,50 @@ GRN_PLUGIN_REGISTER(grn_ctx *ctx)
   grn_plugin_expr_var_init(ctx, &vars[17], "is_output_file", -1);
   grn_plugin_expr_var_init(ctx, &vars[18], "sentence_vectors", -1);
   grn_plugin_command_create(ctx, "word2vec_train", -1, command_word2vec_train, 19, vars);
+
+  grn_plugin_expr_var_init(ctx, &vars[0], "train_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "max_vocab", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "min_count", -1);
+  grn_plugin_command_create(ctx, "glove_vocab_count", -1, command_glove_vocab_count, 5, vars);
+
+  grn_plugin_expr_var_init(ctx, &vars[0], "train_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "cooccur_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "symmetric", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "window_size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "overflow_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "memory", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "max_product", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "overflow_length", -1);
+  grn_plugin_command_create(ctx, "glove_cooccur", -1, command_glove_cooccur, 10, vars);
+
+  grn_plugin_expr_var_init(ctx, &vars[0], "cooccur_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "shuffle_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "temp_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "memory", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "array_size", -1);
+  grn_plugin_command_create(ctx, "glove_shuffle", -1, command_glove_shuffle, 6, vars);
+
+
+  grn_plugin_expr_var_init(ctx, &vars[0], "shuffle_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[1], "save_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[2], "vocab_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[3], "save_gradsq", -1);
+  grn_plugin_expr_var_init(ctx, &vars[4], "gradsq_file", -1);
+  grn_plugin_expr_var_init(ctx, &vars[5], "verbose", -1);
+  grn_plugin_expr_var_init(ctx, &vars[6], "vector_size", -1);
+  grn_plugin_expr_var_init(ctx, &vars[7], "iter", -1);
+  grn_plugin_expr_var_init(ctx, &vars[8], "threads", -1);
+  grn_plugin_expr_var_init(ctx, &vars[9], "alpha", -1);
+  grn_plugin_expr_var_init(ctx, &vars[10], "x_max", -1);
+  grn_plugin_expr_var_init(ctx, &vars[11], "eta", -1);
+  grn_plugin_expr_var_init(ctx, &vars[12], "binary", -1);
+  grn_plugin_expr_var_init(ctx, &vars[13], "model", -1);
+  grn_plugin_command_create(ctx, "glove_train", -1, command_glove_train, 14, vars);
 
   grn_proc_create(ctx, "QueryExpanderWord2vec", strlen("QueryExpanderWord2vec"),
                   GRN_PROC_FUNCTION,
